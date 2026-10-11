@@ -9,8 +9,8 @@ sits in the middle; the only way out to the world is the `Downloader` trait.
 | `probe` | Reads the description of a video and its non-music parts (pure) |
 | `ytdlp` | Builds the yt-dlp command lines and reads its error output (pure) |
 | `playlist` | The `Downloader` port, plus checking and downloading a whole playlist, with events and a report |
-| `files` | Which tracks are already in a folder, and cleaning up after a failure |
-| `process` | The adapter that runs the real yt-dlp program |
+| `files` | Which tracks are already in a folder, cleaning up after a failure, safe folder names |
+| `process` | The adapter that runs the real yt-dlp program, and tells whether it can be started |
 
 ## Track list format
 

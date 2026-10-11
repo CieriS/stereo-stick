@@ -9,8 +9,8 @@ It started as a pair of shell scripts. The goal is a desktop app for people
 who do not use a terminal: paste titles or links, pick a folder, press a
 button.
 
-**Status: early development.** The engine works and is tested; there is no
-window yet.
+**Status: early development.** The app runs from source for developers;
+there are no installers yet.
 
 ## What it does today
 
@@ -29,7 +29,7 @@ window yet.
 ## Roadmap
 
 1. ~~Engine: track list, checks, download, report~~
-2. Desktop app (Tauri): playlists, progress per track, final report
+2. ~~Desktop app (Tauri): one playlist, progress per track, final report~~
 3. USB stick: detect the drive, copy only what changed, eject
 4. Song details from a music catalogue (official title, artist, length) to
    pick the right video and to catch edits the community has not reviewed
@@ -38,13 +38,16 @@ window yet.
 
 ## Development
 
-Needs [Rust](https://rustup.rs), [just](https://just.systems) and, to try it
-against real videos, [yt-dlp](https://github.com/yt-dlp/yt-dlp) with ffmpeg
-and Deno in `PATH`.
+Needs [Rust](https://rustup.rs), [Bun](https://bun.sh),
+[just](https://just.systems) and, to use the app for real,
+[yt-dlp](https://github.com/yt-dlp/yt-dlp) with ffmpeg and Deno in `PATH`.
+On Linux, also the [libraries Tauri asks for](https://tauri.app/start/prerequisites/).
 
 | Command | What it does |
 |---|---|
-| `just check` | Formatting, lints and tests: what CI runs |
+| `just dev` | Open the desktop app, reloading on changes |
+| `just preview` | The window alone in a browser, with a pretend backend |
+| `just check` | Lints, tests and frontend build: what CI runs |
 | `just test` | Tests only |
 | `just fmt` | Format the code |
 | `cargo run --example check -- list.txt` | Describe the tracks of a list without downloading |
@@ -56,6 +59,7 @@ The tests never touch the network: a stand-in script plays the part of yt-dlp.
 | Path | Content |
 |---|---|
 | `crates/engine` | Everything that is not user interface; see [docs/engine.md](docs/engine.md) |
+| `app` | The desktop window; see [docs/app.md](docs/app.md) |
 | `docs/` | Documentation by area |
 
 ## Responsible use
