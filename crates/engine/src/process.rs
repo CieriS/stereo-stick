@@ -4,10 +4,10 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 
-use crate::playlist::{DownloadError, Downloader};
+use crate::playlist::{DownloadError, Downloader, Job};
 use crate::probe::{VideoInfo, parse_probe_json};
 use crate::tracklist::Source;
-use crate::ytdlp::{Job, download_args, failure_message, probe_args};
+use crate::ytdlp::{download_args, failure_message, probe_args};
 
 /// yt-dlp as an external program. ffmpeg, which yt-dlp needs to convert the
 /// audio, must be findable by it.

@@ -6,10 +6,9 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use engine::playlist::{self, DownloadError, Downloader};
+use engine::playlist::{self, DownloadError, Downloader, NonMusic};
 use engine::process::YtDlp;
 use engine::tracklist::{self, Source};
-use engine::ytdlp::NonMusic;
 
 /// Writes its arguments, one per line, to `args.log` next to itself. Fails
 /// on any source containing "missing"; otherwise prints a video description

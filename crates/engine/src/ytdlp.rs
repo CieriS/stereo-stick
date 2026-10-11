@@ -1,31 +1,9 @@
 //! The yt-dlp command lines, built as plain argument lists so that they can
 //! be tested without running anything.
 
+use crate::playlist::{Job, NonMusic};
+use crate::tracklist::Source;
 use std::ffi::OsString;
-use std::path::Path;
-
-use crate::tracklist::{Entry, Source};
-
-/// What to do with the parts of a video that are not music.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum NonMusic {
-    /// Download the audio of the whole video.
-    #[default]
-    Keep,
-    /// Cut the reviewed non-music parts out of the audio.
-    Remove,
-}
-
-/// One track to download into a playlist folder.
-#[derive(Debug, Clone, Copy)]
-pub struct Job<'a> {
-    pub entry: &'a Entry,
-    /// Name of the playlist: car stereos group tracks by the album tag, so
-    /// it is written there.
-    pub playlist: &'a str,
-    pub directory: &'a Path,
-    pub non_music: NonMusic,
-}
 
 /// Arguments that describe a video as JSON without downloading it.
 pub fn probe_args(source: &Source) -> Vec<OsString> {
@@ -107,7 +85,10 @@ pub fn failure_message(stderr: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
+    use crate::tracklist::Entry;
 
     fn entry(position: usize, source: Source) -> Entry {
         Entry {

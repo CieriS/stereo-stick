@@ -7,7 +7,6 @@ use std::path::Path;
 
 use crate::probe::{ProbeError, VideoInfo};
 use crate::tracklist::{Entry, Source};
-use crate::ytdlp::{Job, NonMusic};
 
 #[derive(Debug)]
 pub enum DownloadError {
@@ -35,6 +34,27 @@ impl From<ProbeError> for DownloadError {
     fn from(error: ProbeError) -> Self {
         Self::Unreadable(error)
     }
+}
+
+/// What to do with the parts of a video that are not music.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NonMusic {
+    /// Download the audio of the whole video.
+    #[default]
+    Keep,
+    /// Cut the reviewed non-music parts out of the audio.
+    Remove,
+}
+
+/// One track to download into a playlist folder.
+#[derive(Debug, Clone, Copy)]
+pub struct Job<'a> {
+    pub entry: &'a Entry,
+    /// Name of the playlist: car stereos group tracks by the album tag, so
+    /// it is written there.
+    pub playlist: &'a str,
+    pub directory: &'a Path,
+    pub non_music: NonMusic,
 }
 
 /// The outside world as the engine sees it: something that can describe a
