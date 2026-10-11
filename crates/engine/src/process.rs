@@ -27,6 +27,11 @@ impl YtDlp {
         }
     }
 
+    /// True when the program can be started at all.
+    pub fn is_available(&self) -> bool {
+        self.run(vec!["--version".into()], &mut |_| {}).is_ok()
+    }
+
     fn unavailable(&self, error: &std::io::Error) -> DownloadError {
         DownloadError::Unavailable(format!("{}: {error}", self.program.display()))
     }

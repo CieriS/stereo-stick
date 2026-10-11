@@ -18,6 +18,7 @@ use engine::tracklist::{self, Source};
 const STAND_IN: &str = r#"#!/bin/sh
 here=$(dirname "$0")
 for arg in "$@"; do printf '%s\n' "$arg" >> "$here/args.log"; done
+[ "$1" = --version ] && { echo 2026.01.01; exit 0; }
 probe=no; dir=; output=
 while [ $# -gt 1 ]; do
   case "$1" in
@@ -197,7 +198,9 @@ fn a_second_run_downloads_only_what_is_missing() {
 #[test]
 fn a_missing_program_is_reported_as_unavailable() {
     let sandbox = Sandbox::new("unavailable");
+    assert!(sandbox.downloader().is_available());
     let downloader = YtDlp::new(sandbox.path("no-such-program"));
+    assert!(!downloader.is_available());
     let error = downloader.probe(&Source::Search("x".into())).unwrap_err();
     assert!(matches!(error, DownloadError::Unavailable(_)));
 
