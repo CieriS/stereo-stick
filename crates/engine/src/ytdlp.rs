@@ -5,6 +5,23 @@ use crate::playlist::{Job, NonMusic};
 use crate::tracklist::Source;
 use std::ffi::OsString;
 
+/// One line per progress update: bytes downloaded and total bytes (or `NA`).
+const PROGRESS_TEMPLATE: &str = "download:PROGRESS %(progress.downloaded_bytes)s %(progress.total_bytes,progress.total_bytes_estimate)s";
+
+/// How the name of every file of the track at `position` begins.
+pub fn file_prefix(position: usize) -> String {
+    format!("{position:02}_")
+}
+
+/// Reads a progress line of yt-dlp as a fraction between 0 and 1. Any other
+/// line, or a download of unknown size, gives `None`.
+pub fn parse_progress(line: &str) -> Option<f32> {
+    let mut numbers = line.trim().strip_prefix("PROGRESS ")?.split_whitespace();
+    let downloaded: f64 = numbers.next()?.parse().ok()?;
+    let total: f64 = numbers.next()?.parse().ok()?;
+    (total > 0.0 && downloaded >= 0.0).then(|| (downloaded / total).min(1.0) as f32)
+}
+
 /// Arguments that describe a video as JSON without downloading it.
 pub fn probe_args(source: &Source) -> Vec<OsString> {
     [
@@ -41,6 +58,9 @@ pub fn download_args(job: &Job<'_>) -> Vec<OsString> {
         // Many car stereos cannot show WebP covers.
         "--convert-thumbnails",
         "jpg",
+        "--newline",
+        "--progress-template",
+        PROGRESS_TEMPLATE,
     ]
     .into_iter()
     .map(OsString::from)
@@ -54,7 +74,7 @@ pub fn download_args(job: &Job<'_>) -> Vec<OsString> {
     args.push("--paths".into());
     args.push(job.directory.into());
     args.push("--output".into());
-    args.push(format!("{:02}_%(title)s.%(ext)s", job.entry.position).into());
+    args.push(format!("{}%(title)s.%(ext)s", file_prefix(job.entry.position)).into());
     args.push("--".into());
     args.push(job.entry.source.to_ytdlp_arg().into());
     args
@@ -181,6 +201,46 @@ mod tests {
             let args = strings(&download_args(&job(&entry, playlist, NonMusic::Keep)));
             assert!(args.contains(&expected.to_owned()), "{playlist}: {args:?}");
         }
+    }
+
+    #[test]
+    fn download_reports_progress_line_by_line() {
+        let entry = entry(1, Source::Search("x".into()));
+        let args = strings(&download_args(&job(&entry, "p", NonMusic::Keep)));
+        assert!(args.contains(&"--newline".to_owned()));
+        assert!(value_after(&args, "--progress-template").starts_with("download:PROGRESS "));
+    }
+
+    #[test]
+    fn progress_lines_become_fractions() {
+        assert_eq!(parse_progress("PROGRESS 50 200"), Some(0.25));
+        assert_eq!(parse_progress("  PROGRESS 1024 4096.0\r"), Some(0.25));
+        assert_eq!(parse_progress("PROGRESS 300 200"), Some(1.0));
+        assert_eq!(parse_progress("PROGRESS 0 200"), Some(0.0));
+    }
+
+    #[test]
+    fn lines_that_are_not_usable_progress_are_ignored() {
+        for line in [
+            "",
+            "[download] Destination: 01_x.webm",
+            "PROGRESS",
+            "PROGRESS 10",
+            "PROGRESS 10 NA",
+            "PROGRESS NA NA",
+            "PROGRESS 10 0",
+            "PROGRESS -5 10",
+            "PROGRESSION 1 2",
+        ] {
+            assert_eq!(parse_progress(line), None, "{line}");
+        }
+    }
+
+    #[test]
+    fn file_prefix_is_padded_to_two_digits() {
+        assert_eq!(file_prefix(3), "03_");
+        assert_eq!(file_prefix(42), "42_");
+        assert_eq!(file_prefix(123), "123_");
     }
 
     #[test]

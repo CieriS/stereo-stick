@@ -21,7 +21,10 @@ window yet.
 - Downloads each track as a 320 kbps MP3 with a JPG cover, the playlist name
   as album (car stereos group by album) and the channel as artist when the
   video has none.
-- Reports the outcome track by track; one failure never stops the rest.
+- Skips the tracks that are already in the folder and cleans up after a failed
+  download.
+- Reports progress and the outcome track by track; one failure never stops
+  the rest.
 
 ## Roadmap
 

@@ -8,7 +8,8 @@ sits in the middle; the only way out to the world is the `Downloader` trait.
 | `tracklist` | Parses a track list into entries (pure) |
 | `probe` | Reads the description of a video and its non-music parts (pure) |
 | `ytdlp` | Builds the yt-dlp command lines and reads its error output (pure) |
-| `playlist` | The `Downloader` port, plus checking and downloading a whole playlist |
+| `playlist` | The `Downloader` port, plus checking and downloading a whole playlist, with events and a report |
+| `files` | Which tracks are already in a folder, and cleaning up after a failure |
 | `process` | The adapter that runs the real yt-dlp program |
 
 ## Track list format
@@ -46,8 +47,20 @@ case once song details are available (see the roadmap).
 - YouTube support needs a JavaScript runtime next to yt-dlp (Deno by default)
   since yt-dlp 2025.11.12. The installers will have to ship one.
 
-## Not there yet
+## Downloading a playlist
 
-- Progress while a track downloads (the adapter waits for yt-dlp to finish).
-- Skipping tracks that are already on disk.
-- Cleaning up the cover file left behind when a download fails halfway.
+`playlist::download` takes a `Request` and reports `Event`s as they happen
+(`Started`, `Progress`, `Finished`), then returns a `Report`. Each track ends
+as `Downloaded`, `AlreadyPresent` or `Failed`.
+
+- **Already there**: a track is skipped when the folder holds an MP3 whose
+  name begins with its position (`07_`). Tracks are recognised by position
+  alone, so new songs belong at the end of a list: inserting or reordering
+  makes the list and the folder disagree. Pass an empty `existing` to download
+  everything again.
+- **Progress**: yt-dlp prints one `PROGRESS <downloaded> <total>` line per
+  update (`--progress-template`); it covers the download, not the conversion
+  to MP3 that follows. Downloads of unknown size report nothing.
+- **After a failure**: every file of that track that is not a finished MP3
+  (cover, partial download) is deleted, so a folder never carries debris to
+  the USB stick.
