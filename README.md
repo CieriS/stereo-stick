@@ -1,6 +1,4 @@
-# youtube-bulk-downloader
-
-> Working title: the app will get its own name before the first release.
+# Stereo Stick
 
 Turn a list of songs into a USB stick your car stereo understands: tagged MP3
 files, one folder per playlist, covers the dashboard can show.
