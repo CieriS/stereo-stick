@@ -6,29 +6,48 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use engine::playlist::{self, DownloadError, Downloader, NonMusic};
+use engine::files;
+use engine::playlist::{self, DownloadError, Downloader, Event, NonMusic, Request};
 use engine::process::YtDlp;
 use engine::tracklist::{self, Source};
 
-/// Writes its arguments, one per line, to `args.log` next to itself. Fails
-/// on any source containing "missing"; otherwise prints a video description
-/// when probing and creates an empty MP3 when downloading.
+/// Writes its arguments, one per line, to `args.log` next to itself. When
+/// probing it prints a video description; when downloading it reports
+/// progress and creates an empty MP3. Any source containing "missing" fails,
+/// and a failed download leaves a cover and a partial file behind.
 const STAND_IN: &str = r#"#!/bin/sh
 here=$(dirname "$0")
 for arg in "$@"; do printf '%s\n' "$arg" >> "$here/args.log"; done
-for arg in "$@"; do source=$arg; done
-case "$source" in *missing*)
+probe=no; dir=; output=
+while [ $# -gt 1 ]; do
+  case "$1" in
+    --dump-json) probe=yes;;
+    --paths) dir=$2; shift;;
+    --output) output=$2; shift;;
+  esac
+  shift
+done
+source=$1
+name="${output%%%*}Song"
+fail() {
   echo "WARNING: noise" >&2
   echo "ERROR: [youtube] xyz: Video unavailable" >&2
-  exit 1;;
+  exit 1
+}
+if [ "$probe" = yes ]; then
+  case "$source" in *missing*) fail;; esac
+  echo '{"id":"xyz","title":"A Song","duration":200,"sponsorblock_chapters":[{"start_time":0,"end_time":15,"category":"music_offtopic"}]}'
+  exit 0
+fi
+mkdir -p "$dir"
+echo "[download] Destination: $name.webm"
+echo "PROGRESS 50 200"
+case "$source" in *missing*)
+  : > "$dir/$name.jpg"; : > "$dir/$name.webm.part"
+  fail;;
 esac
-case " $* " in
-  *" --dump-json "*)
-    echo '{"id":"xyz","title":"A Song","duration":200,"sponsorblock_chapters":[{"start_time":0,"end_time":15,"category":"music_offtopic"}]}';;
-  *)
-    while [ "$1" != "--paths" ]; do shift; done
-    mkdir -p "$2" && : > "$2/$(ls "$2" | wc -l | tr -d ' ').mp3";;
-esac
+echo "PROGRESS 200 200"
+: > "$dir/$name.mp3"
 "#;
 
 struct Sandbox(PathBuf);
@@ -59,8 +78,18 @@ impl Drop for Sandbox {
     }
 }
 
-fn mp3_count(dir: &Path) -> usize {
-    fs::read_dir(dir).map_or(0, Iterator::count)
+fn request<'a>(
+    out: &'a Path,
+    entries: &'a [tracklist::Entry],
+    existing: &'a [String],
+) -> Request<'a> {
+    Request {
+        playlist: "sc_song_ita",
+        directory: out,
+        entries,
+        non_music: NonMusic::Remove,
+        existing,
+    }
 }
 
 #[test]
@@ -91,18 +120,29 @@ fn a_playlist_is_downloaded_track_by_track() {
     let sandbox = Sandbox::new("download");
     let out = sandbox.path("out dir");
     let entries = tracklist::parse("first song\nmissing song\n# Third\nhttps://example.com/v");
+    let mut progress = Vec::new();
     let report = playlist::download(
         &sandbox.downloader(),
-        "sc_song_ita",
-        &out,
-        &entries,
-        NonMusic::Remove,
+        &request(&out, &entries, &[]),
+        &mut |event| {
+            if let Event::Progress { position, fraction } = event {
+                progress.push((position, fraction));
+            }
+        },
     );
 
     assert_eq!(report.downloaded(), 2);
-    assert_eq!(mp3_count(&out), 2);
-    let failed: Vec<_> = report.failed().map(|(entry, _)| entry.position).collect();
-    assert_eq!(failed, [2]);
+    let failed: Vec<_> = report
+        .failed()
+        .map(|(entry, error)| (entry.position, error.to_string()))
+        .collect();
+    assert_eq!(failed, [(2, "[youtube] xyz: Video unavailable".to_owned())]);
+    assert_eq!(
+        progress,
+        [(1, 0.25), (1, 1.0), (2, 0.25), (3, 0.25), (3, 1.0)]
+    );
+    // The cover and the partial file of the failed track are gone.
+    assert_eq!(files::list(&out).unwrap(), ["01_Song.mp3", "03_Song.mp3"]);
 
     let log = fs::read_to_string(sandbox.path("args.log")).unwrap();
     for expected in [
@@ -122,6 +162,39 @@ fn a_playlist_is_downloaded_track_by_track() {
 }
 
 #[test]
+fn a_second_run_downloads_only_what_is_missing() {
+    let sandbox = Sandbox::new("resume");
+    let out = sandbox.path("out");
+    let entries = tracklist::parse("first song\nsecond song");
+    let downloader = sandbox.downloader();
+    fs::create_dir_all(&out).unwrap();
+    fs::write(out.join("01_Already here.mp3"), b"").unwrap();
+
+    let existing = files::list(&out).unwrap();
+    let report = playlist::download(
+        &downloader,
+        &request(&out, &entries, &existing),
+        &mut |_| {},
+    );
+    assert_eq!(report.already_present(), 1);
+    assert_eq!(report.downloaded(), 1);
+    assert_eq!(
+        files::list(&out).unwrap(),
+        ["01_Already here.mp3", "02_Song.mp3"]
+    );
+
+    let existing = files::list(&out).unwrap();
+    let report = playlist::download(
+        &downloader,
+        &request(&out, &entries, &existing),
+        &mut |_| {},
+    );
+    assert_eq!(report.already_present(), 2);
+    let log = fs::read_to_string(sandbox.path("args.log")).unwrap();
+    assert_eq!(log.lines().filter(|line| *line == "--output").count(), 1);
+}
+
+#[test]
 fn a_missing_program_is_reported_as_unavailable() {
     let sandbox = Sandbox::new("unavailable");
     let downloader = YtDlp::new(sandbox.path("no-such-program"));
@@ -129,15 +202,25 @@ fn a_missing_program_is_reported_as_unavailable() {
     assert!(matches!(error, DownloadError::Unavailable(_)));
 
     let entries = tracklist::parse("a\nb");
-    let report = playlist::download(
-        &downloader,
-        "mix",
-        &sandbox.path("out"),
-        &entries,
-        NonMusic::Keep,
-    );
+    let out = sandbox.path("out");
+    let report = playlist::download(&downloader, &request(&out, &entries, &[]), &mut |_| {});
     assert_eq!(report.downloaded(), 0);
     assert_eq!(report.failed().count(), 2);
+}
+
+#[test]
+fn a_lot_of_error_output_does_not_block() {
+    let sandbox = Sandbox::new("noisy");
+    fs::write(
+        sandbox.path("yt-dlp"),
+        "#!/bin/sh\ni=0; while [ $i -lt 20000 ]; do echo 'WARNING: a long line of noise to fill the pipe' >&2; i=$((i+1)); done\necho 'ERROR: boom' >&2; exit 1\n",
+    )
+    .unwrap();
+    let error = sandbox
+        .downloader()
+        .probe(&Source::Search("x".into()))
+        .unwrap_err();
+    assert_eq!(error.to_string(), "boom");
 }
 
 #[test]

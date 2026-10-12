@@ -21,7 +21,10 @@ window yet.
 - Downloads each track as a 320 kbps MP3 with a JPG cover, the playlist name
   as album (car stereos group by album) and the channel as artist when the
   video has none.
-- Reports the outcome track by track; one failure never stops the rest.
+- Skips the tracks that are already in the folder and cleans up after a failed
+  download.
+- Reports progress and the outcome track by track; one failure never stops
+  the rest.
 
 ## Roadmap
 
@@ -30,7 +33,7 @@ window yet.
 3. USB stick: detect the drive, copy only what changed, eject
 4. Song details from a music catalogue (official title, artist, length) to
    pick the right video and to catch edits the community has not reviewed
-5. Import a playlist from Spotify
+5. Import a playlist from Spotify ([issue 1](https://github.com/CieriS/youtube-bulk-downloader/issues/1))
 6. Installers for Windows, macOS and Linux, with the download tools built in
 
 ## Development

@@ -2,6 +2,7 @@
 //! files ready for a car stereo. It knows nothing about windows or buttons;
 //! the outside world is reached only through [`playlist::Downloader`].
 
+pub mod files;
 pub mod playlist;
 pub mod probe;
 pub mod process;
