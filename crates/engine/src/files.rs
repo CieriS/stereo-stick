@@ -31,6 +31,22 @@ pub fn is_leftover(position: usize, name: &str) -> bool {
     name.starts_with(&file_prefix(position)) && !is_mp3(name)
 }
 
+/// The folder name for a playlist: the characters some file systems (and USB
+/// sticks are usually FAT) refuse are replaced, and the dots and spaces
+/// Windows drops from the ends are trimmed. `None` when nothing is left.
+pub fn folder_name(playlist: &str) -> Option<String> {
+    let cleaned: String = playlist
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+            c if c.is_control() => '_',
+            c => c,
+        })
+        .collect();
+    let trimmed = cleaned.trim_matches(|c: char| c == '.' || c.is_whitespace());
+    (!trimmed.is_empty()).then(|| trimmed.to_owned())
+}
+
 /// The names of the files in `directory`; a folder that does not exist yet
 /// is an empty one.
 pub fn list(directory: &Path) -> io::Result<Vec<String>> {
@@ -97,6 +113,21 @@ mod tests {
         assert!(!is_leftover(2, "03_Other.jpg"));
         assert!(!is_leftover(2, "cover.jpg"));
         assert!(!is_leftover(2, "lista_brani.txt"));
+    }
+
+    #[test]
+    fn folder_names_are_safe_on_every_file_system() {
+        assert_eq!(folder_name("sc_song_ita").as_deref(), Some("sc_song_ita"));
+        assert_eq!(
+            folder_name("  Rock & Roll  ").as_deref(),
+            Some("Rock & Roll")
+        );
+        assert_eq!(folder_name("AC/DC: live?").as_deref(), Some("AC_DC_ live_"));
+        assert_eq!(folder_name("a\\b\tc").as_deref(), Some("a_b_c"));
+        assert_eq!(folder_name("..").as_deref(), None);
+        assert_eq!(folder_name(" . ").as_deref(), None);
+        assert_eq!(folder_name("").as_deref(), None);
+        assert_eq!(folder_name("Città ♥").as_deref(), Some("Città ♥"));
     }
 
     #[test]

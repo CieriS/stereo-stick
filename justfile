@@ -2,16 +2,33 @@
 default:
     @just --list
 
+# Install the frontend dependencies
+setup:
+    cd app && bun install
+
+# Open the desktop app, reloading on changes
+dev: setup
+    cd app && bun run tauri dev
+
+# Preview the window in a browser, with a pretend backend
+preview: setup
+    cd app && bun run dev
+
 # Format the code
 fmt:
     cargo fmt --all
+    cd app && bun run format
 
-# Everything CI runs: formatting, lints, tests
-check:
+# Everything CI runs: formatting, lints, tests, frontend build
+check: setup
+    cd app && bun run lint
+    cd app && bun test
+    cd app && bun run build
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
     cargo test --workspace
 
 # Run the tests only
 test:
+    cd app && bun test
     cargo test --workspace
