@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Playlist Downloader",
+  "productName": "Stereo Stick",
   "version": "0.1.0",
-  "identifier": "io.github.cieris.playlist-downloader",
+  "identifier": "io.github.cieris.stereo-stick",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:4340",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Playlist Downloader",
+        "title": "Stereo Stick",
         "width": 920,
         "height": 720,
         "minWidth": 560,

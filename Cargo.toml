@@ -5,7 +5,7 @@ members = ["crates/engine", "app/src-tauri"]
 [workspace.package]
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/CieriS/youtube-bulk-downloader"
+repository = "https://github.com/CieriS/stereo-stick"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

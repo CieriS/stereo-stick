@@ -1,7 +1,7 @@
 // Every word the window shows, in the languages it speaks.
 
 const en = {
-  appTitle: "Playlist Downloader",
+  appTitle: "Stereo Stick",
   tagline: "From a list of songs to a USB stick your car stereo understands.",
   playlistLabel: "Playlist name",
   playlistHint: "It becomes the folder and the album your car shows.",
@@ -50,7 +50,7 @@ const en = {
 export type Messages = typeof en;
 
 const it: Messages = {
-  appTitle: "Playlist Downloader",
+  appTitle: "Stereo Stick",
   tagline: "Da una lista di canzoni a una chiavetta che la tua autoradio capisce.",
   playlistLabel: "Nome della playlist",
   playlistHint: "Diventa la cartella e l'album che vedi in auto.",

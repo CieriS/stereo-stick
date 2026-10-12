@@ -1,6 +1,4 @@
-# youtube-bulk-downloader
-
-> Working title: the app will get its own name before the first release.
+# Stereo Stick
 
 Turn a list of songs into a USB stick your car stereo understands: tagged MP3
 files, one folder per playlist, covers the dashboard can show.
@@ -33,7 +31,7 @@ there are no installers yet.
 3. USB stick: detect the drive, copy only what changed, eject
 4. Song details from a music catalogue (official title, artist, length) to
    pick the right video and to catch edits the community has not reviewed
-5. Import a playlist from Spotify ([issue 1](https://github.com/CieriS/youtube-bulk-downloader/issues/1))
+5. Import a playlist from Spotify ([issue 1](https://github.com/CieriS/stereo-stick/issues/1))
 6. Installers for Windows, macOS and Linux, with the download tools built in
 
 ## Development
