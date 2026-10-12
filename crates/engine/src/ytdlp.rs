@@ -4,6 +4,34 @@
 use crate::playlist::{Job, NonMusic};
 use crate::tracklist::Source;
 use std::ffi::OsString;
+use std::path::PathBuf;
+
+/// Where the programs yt-dlp relies on are, when they are not simply in
+/// `PATH`: the ones shipped inside the app.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Tools {
+    /// ffmpeg, which converts the audio and embeds the cover.
+    pub ffmpeg: Option<PathBuf>,
+    /// Deno, the JavaScript runtime yt-dlp needs for YouTube.
+    pub deno: Option<PathBuf>,
+}
+
+/// Arguments that go before every other one: they make a run depend on the
+/// app alone, not on a yt-dlp configuration file the user may have.
+pub fn base_args(tools: &Tools) -> Vec<OsString> {
+    let mut args: Vec<OsString> = vec!["--ignore-config".into()];
+    if let Some(ffmpeg) = &tools.ffmpeg {
+        args.push("--ffmpeg-location".into());
+        args.push(ffmpeg.into());
+    }
+    if let Some(deno) = &tools.deno {
+        let mut runtime = OsString::from("deno:");
+        runtime.push(deno);
+        args.push("--js-runtimes".into());
+        args.push(runtime);
+    }
+    args
+}
 
 /// One line per progress update: bytes downloaded and total bytes (or `NA`).
 const PROGRESS_TEMPLATE: &str = "download:PROGRESS %(progress.downloaded_bytes)s %(progress.total_bytes,progress.total_bytes_estimate)s";
@@ -136,6 +164,37 @@ mod tests {
             directory: Path::new("music/mix"),
             non_music,
         }
+    }
+
+    #[test]
+    fn without_bundled_tools_only_the_user_configuration_is_ignored() {
+        assert_eq!(strings(&base_args(&Tools::default())), ["--ignore-config"]);
+    }
+
+    #[test]
+    fn bundled_tools_are_pointed_at_explicitly() {
+        let tools = Tools {
+            ffmpeg: Some("tools dir/ffmpeg".into()),
+            deno: Some("tools dir/deno".into()),
+        };
+        assert_eq!(
+            strings(&base_args(&tools)),
+            [
+                "--ignore-config",
+                "--ffmpeg-location",
+                "tools dir/ffmpeg",
+                "--js-runtimes",
+                "deno:tools dir/deno"
+            ]
+        );
+        let only_deno = Tools {
+            ffmpeg: None,
+            deno: Some("d".into()),
+        };
+        assert_eq!(
+            strings(&base_args(&only_deno)),
+            ["--ignore-config", "--js-runtimes", "deno:d"]
+        );
     }
 
     #[test]

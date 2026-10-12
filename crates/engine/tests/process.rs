@@ -18,7 +18,7 @@ use engine::tracklist::{self, Source};
 const STAND_IN: &str = r#"#!/bin/sh
 here=$(dirname "$0")
 for arg in "$@"; do printf '%s\n' "$arg" >> "$here/args.log"; done
-[ "$1" = --version ] && { echo 2026.01.01; exit 0; }
+for arg in "$@"; do [ "$arg" = --version ] && { echo 2026.01.01; exit 0; }; done
 probe=no; dir=; output=
 while [ $# -gt 1 ]; do
   case "$1" in
@@ -224,6 +224,35 @@ fn a_lot_of_error_output_does_not_block() {
         .probe(&Source::Search("x".into()))
         .unwrap_err();
     assert_eq!(error.to_string(), "boom");
+}
+
+#[test]
+fn bundled_tools_are_found_next_to_yt_dlp_and_passed_on() {
+    let sandbox = Sandbox::new("bundled");
+    assert!(YtDlp::bundled(&sandbox.path("nowhere")).is_none());
+
+    let alone = YtDlp::bundled(&sandbox.0).expect("yt-dlp is in the sandbox");
+    assert!(!alone.is_bundled());
+
+    fs::write(sandbox.path("ffmpeg"), b"").unwrap();
+    fs::write(sandbox.path("deno"), b"").unwrap();
+    fs::create_dir(sandbox.path("a folder is not a tool")).unwrap();
+    let bundled = YtDlp::bundled(&sandbox.0).unwrap();
+    assert!(bundled.is_bundled());
+    bundled.probe(&Source::Search("a song".into())).unwrap();
+
+    let log = fs::read_to_string(sandbox.path("args.log")).unwrap();
+    let lines: Vec<_> = log.lines().collect();
+    assert_eq!(lines[0], "--ignore-config");
+    let after = |flag: &str| lines[lines.iter().position(|l| *l == flag).expect(flag) + 1];
+    assert_eq!(
+        Path::new(after("--ffmpeg-location")),
+        sandbox.path("ffmpeg")
+    );
+    assert_eq!(
+        after("--js-runtimes"),
+        format!("deno:{}", sandbox.path("deno").display())
+    );
 }
 
 #[test]
