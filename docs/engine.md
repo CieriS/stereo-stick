@@ -64,3 +64,12 @@ as `Downloaded`, `AlreadyPresent` or `Failed`.
 - **After a failure**: every file of that track that is not a finished MP3
   (cover, partial download) is deleted, so a folder never carries debris to
   the USB stick.
+
+## Tools
+
+yt-dlp needs ffmpeg (conversion, covers) and a JavaScript runtime (Deno) for
+YouTube. `YtDlp::new` expects all three in `PATH`. `YtDlp::bundled(folder)`
+uses the copies found in a folder and tells yt-dlp where they are
+(`--ffmpeg-location`, `--js-runtimes deno:<path>`). Every run passes
+`--ignore-config`, so a yt-dlp configuration file on the user's computer
+cannot change what the app does.

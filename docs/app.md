@@ -44,9 +44,12 @@ freezes.
 
 ## Not there yet
 
-- The installers do not bundle yt-dlp, ffmpeg and Deno. An app opened from
-  the Finder or the Start menu does not see the `PATH` of a terminal, so for
-  now the app is only usable through `just dev`.
+- The installers do not bundle yt-dlp, ffmpeg and Deno yet. The app already
+  looks for them in its `tools` resource folder (`app/src-tauri/tools` at
+  build time) and falls back to `PATH`; what is missing is the step that
+  fetches them for each system. An app opened from the Finder or the Start
+  menu does not see the `PATH` of a terminal, so until then the app is only
+  usable through `just dev`.
 - No way to stop a download once started.
 - The window is tested through its pure parts and by hand in the preview;
   there is no automated test that drives the real window.
