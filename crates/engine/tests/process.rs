@@ -14,7 +14,7 @@ use engine::tracklist::{self, Source};
 /// Writes its arguments, one per line, to `args.log` next to itself. When
 /// probing it prints a video description; when downloading it reports
 /// progress and creates an empty MP3. Any source containing "missing" fails,
-/// and a failed download leaves a cover and a partial file behind.
+/// and a failed download leaves a cover, a partial file and an unfinished MP3 behind.
 const STAND_IN: &str = r#"#!/bin/sh
 here=$(dirname "$0")
 for arg in "$@"; do printf '%s\n' "$arg" >> "$here/args.log"; done
@@ -44,7 +44,7 @@ mkdir -p "$dir"
 echo "[download] Destination: $name.webm"
 echo "PROGRESS 50 200"
 case "$source" in *missing*)
-  : > "$dir/$name.jpg"; : > "$dir/$name.webm.part"
+  : > "$dir/$name.jpg"; : > "$dir/$name.webm.part"; : > "$dir/$name.mp3"
   fail;;
 esac
 echo "PROGRESS 200 200"
@@ -142,7 +142,7 @@ fn a_playlist_is_downloaded_track_by_track() {
         progress,
         [(1, 0.25), (1, 1.0), (2, 0.25), (3, 0.25), (3, 1.0)]
     );
-    // The cover and the partial file of the failed track are gone.
+    // Nothing of the failed track is left, not even its unfinished MP3.
     assert_eq!(files::list(&out).unwrap(), ["01_Song.mp3", "03_Song.mp3"]);
 
     let log = fs::read_to_string(sandbox.path("args.log")).unwrap();

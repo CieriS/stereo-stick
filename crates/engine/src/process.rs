@@ -115,7 +115,7 @@ impl Downloader for YtDlp {
             }
         });
         if result.is_err() {
-            files::remove_leftovers(job.directory, job.entry.position);
+            files::remove_track(job.directory, job.entry.position);
         }
         result
     }
