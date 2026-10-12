@@ -2,7 +2,7 @@
 
 use std::ffi::OsString;
 use std::io::{BufRead, BufReader, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 
@@ -10,21 +10,47 @@ use crate::files;
 use crate::playlist::{DownloadError, Downloader, Job};
 use crate::probe::{VideoInfo, parse_probe_json};
 use crate::tracklist::Source;
-use crate::ytdlp::{download_args, failure_message, parse_progress, probe_args};
+use crate::ytdlp::{Tools, base_args, download_args, failure_message, parse_progress, probe_args};
 
 /// yt-dlp as an external program. ffmpeg, which yt-dlp needs to convert the
 /// audio, must be findable by it.
 #[derive(Debug, Clone)]
 pub struct YtDlp {
     program: PathBuf,
+    tools: Tools,
+}
+
+/// The file name of a program on this system.
+fn executable(name: &str) -> String {
+    format!("{name}{}", std::env::consts::EXE_SUFFIX)
 }
 
 impl YtDlp {
-    /// `program` is a path, or a bare name to look up in `PATH`.
+    /// `program` is a path, or a bare name to look up in `PATH`; ffmpeg and
+    /// Deno are then expected in `PATH` too.
     pub fn new(program: impl Into<PathBuf>) -> Self {
         Self {
             program: program.into(),
+            tools: Tools::default(),
         }
+    }
+
+    /// The yt-dlp shipped in `directory`, with the ffmpeg and Deno found next
+    /// to it. `None` when yt-dlp itself is not there.
+    pub fn bundled(directory: &Path) -> Option<Self> {
+        let find = |name| Some(directory.join(executable(name))).filter(|path| path.is_file());
+        Some(Self {
+            program: find("yt-dlp")?,
+            tools: Tools {
+                ffmpeg: find("ffmpeg"),
+                deno: find("deno"),
+            },
+        })
+    }
+
+    /// True when the tools come with the app rather than from `PATH`.
+    pub fn is_bundled(&self) -> bool {
+        self.tools != Tools::default()
     }
 
     /// True when the program can be started at all.
@@ -40,6 +66,7 @@ impl YtDlp {
     /// `on_line` as soon as it is written.
     fn run(&self, args: Vec<OsString>, on_line: &mut dyn FnMut(&str)) -> Result<(), DownloadError> {
         let mut child = Command::new(&self.program)
+            .args(base_args(&self.tools))
             .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -88,7 +115,7 @@ impl Downloader for YtDlp {
             }
         });
         if result.is_err() {
-            files::remove_leftovers(job.directory, job.entry.position);
+            files::remove_track(job.directory, job.entry.position);
         }
         result
     }

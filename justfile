@@ -14,6 +14,14 @@ dev: setup
 preview: setup
     cd app && bun run dev
 
+# Download the tools the app ships with into app/src-tauri/tools
+tools: setup
+    cd app && bun run fetch-tools
+
+# Build the installer for this system, tools included
+bundle: tools
+    cd app && bun run tauri build
+
 # Format the code
 fmt:
     cargo fmt --all

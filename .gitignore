@@ -3,3 +3,5 @@
 node_modules
 /app/dist
 /app/src-tauri/gen
+/app/src-tauri/tools/*
+!/app/src-tauri/tools/README.md

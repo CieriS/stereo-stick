@@ -1,0 +1,102 @@
+{
+  "darwin-arm64": [
+    {
+      "name": "yt-dlp",
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos",
+      "sha256": "0f192b7ec147ab6288885d6351d9ab67367640029b4377576ef46dd79cf7b202"
+    },
+    {
+      "name": "deno",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-aarch64-apple-darwin.zip",
+      "sha256": "5cd46d6268f6f78f5d88bdc7159d20bd44cdaa4b3303474839f87ec6fe7ae25c",
+      "member": "deno"
+    },
+    {
+      "name": "ffmpeg",
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+      "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+      "member": "ffmpeg"
+    },
+    {
+      "name": "ffprobe",
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip",
+      "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6",
+      "member": "ffprobe"
+    }
+  ],
+  "darwin-x64": [
+    {
+      "name": "yt-dlp",
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos",
+      "sha256": "0f192b7ec147ab6288885d6351d9ab67367640029b4377576ef46dd79cf7b202"
+    },
+    {
+      "name": "deno",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-apple-darwin.zip",
+      "sha256": "95daaff11c116a52ad54785e7914c8e9c9cdcaba793c5ed929c74ca2d8e6259a",
+      "member": "deno"
+    },
+    {
+      "name": "ffmpeg",
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/amd64/1789931006_9.0.2/ffmpeg.zip",
+      "sha256": "7c6b4125b191cbf773832dc51f424cf2b6bb7da43007d1e066f95909e47cacd4",
+      "member": "ffmpeg"
+    },
+    {
+      "name": "ffprobe",
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/amd64/1789931006_9.0.2/ffprobe.zip",
+      "sha256": "2322438ed2f6319a691291b247d09c69dcaa3a982460d1f269a7e1af335cfdfd",
+      "member": "ffprobe"
+    }
+  ],
+  "linux-x64": [
+    {
+      "name": "yt-dlp",
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_linux",
+      "sha256": "58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a"
+    },
+    {
+      "name": "deno",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip",
+      "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490",
+      "member": "deno"
+    },
+    {
+      "name": "ffmpeg",
+      "url": "https://ffmpeg.martin-riedl.de/download/linux/amd64/1789931100_9.0.2/ffmpeg.zip",
+      "sha256": "fa8ecf4abbd290d98f7d188b8649cc6b391ae209a98452be955a15aab1909d7f",
+      "member": "ffmpeg"
+    },
+    {
+      "name": "ffprobe",
+      "url": "https://ffmpeg.martin-riedl.de/download/linux/amd64/1789931100_9.0.2/ffprobe.zip",
+      "sha256": "3f428c49070be3d24ec338602b76d412e401ffcb8a5641ef0e729181a232fc32",
+      "member": "ffprobe"
+    }
+  ],
+  "win32-x64": [
+    {
+      "name": "yt-dlp",
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
+      "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a"
+    },
+    {
+      "name": "deno",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip",
+      "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238",
+      "member": "deno.exe"
+    },
+    {
+      "name": "ffmpeg",
+      "url": "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/autobuild-2026-09-30-18-57/ffmpeg-N-127043-g5a54fcf75e-win64-gpl.zip",
+      "sha256": "06ecded6224d19eba0c8597971c57ebf8e7614141b5f1adcb3b250dd0ff343c7",
+      "member": "ffmpeg-N-127043-g5a54fcf75e-win64-gpl/bin/ffmpeg.exe"
+    },
+    {
+      "name": "ffprobe",
+      "url": "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/autobuild-2026-09-30-18-57/ffmpeg-N-127043-g5a54fcf75e-win64-gpl.zip",
+      "sha256": "06ecded6224d19eba0c8597971c57ebf8e7614141b5f1adcb3b250dd0ff343c7",
+      "member": "ffmpeg-N-127043-g5a54fcf75e-win64-gpl/bin/ffprobe.exe"
+    }
+  ]
+}

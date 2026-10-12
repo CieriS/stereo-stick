@@ -11,12 +11,18 @@ use engine::process::YtDlp;
 use engine::{files, tracklist};
 use serde::Deserialize;
 use tauri::ipc::Channel;
+use tauri::{AppHandle, Manager};
 
 use dto::{CheckResult, Progress, Track};
 
-/// Until the installers ship their own copy, yt-dlp is the one in `PATH`.
-fn downloader() -> YtDlp {
-    YtDlp::new("yt-dlp")
+/// The tools shipped with the app when they are there, otherwise the yt-dlp
+/// found in `PATH` (development).
+fn downloader(app: &AppHandle) -> YtDlp {
+    app.path()
+        .resource_dir()
+        .ok()
+        .and_then(|resources| YtDlp::bundled(&resources.join("tools")))
+        .unwrap_or_else(|| YtDlp::new("yt-dlp"))
 }
 
 /// Runs work that waits on yt-dlp without freezing the window.
@@ -36,9 +42,13 @@ fn parse_list(text: &str) -> Vec<Track> {
 
 /// Describes every track without downloading, one result at a time.
 #[tauri::command]
-async fn check_list(text: String, on_result: Channel<CheckResult>) -> Result<(), String> {
+async fn check_list(
+    app: AppHandle,
+    text: String,
+    on_result: Channel<CheckResult>,
+) -> Result<(), String> {
     off_the_window_thread(move || {
-        let downloader = downloader();
+        let downloader = downloader(&app);
         for entry in tracklist::parse(&text) {
             let checked = playlist::check(&downloader, std::slice::from_ref(&entry));
             for result in &checked {
@@ -65,6 +75,7 @@ struct DownloadRequest {
 /// Downloads a playlist into its own folder inside the music folder.
 #[tauri::command]
 async fn download_list(
+    app: AppHandle,
     request: DownloadRequest,
     on_progress: Channel<Progress>,
 ) -> Result<(), String> {
@@ -74,7 +85,7 @@ async fn download_list(
         let existing = files::list(&directory).map_err(|error| error.to_string())?;
         let entries = tracklist::parse(&request.text);
         playlist::download(
-            &downloader(),
+            &downloader(&app),
             &Request {
                 playlist: request.playlist.trim(),
                 directory: &directory,
@@ -98,8 +109,8 @@ async fn download_list(
 
 /// True when the download tool can be started at all.
 #[tauri::command]
-async fn tool_available() -> bool {
-    off_the_window_thread(|| Ok(downloader().is_available()))
+async fn tool_available(app: AppHandle) -> bool {
+    off_the_window_thread(move || Ok(downloader(&app).is_available()))
         .await
         .unwrap_or(false)
 }

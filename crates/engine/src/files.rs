@@ -25,10 +25,9 @@ pub fn is_downloaded<S: AsRef<str>>(position: usize, names: &[S]) -> bool {
         .any(|name| name.starts_with(&prefix) && is_mp3(name))
 }
 
-/// True for what a failed download of the track at `position` leaves behind:
-/// covers, partial downloads, audio not yet converted. Never a finished MP3.
-pub fn is_leftover(position: usize, name: &str) -> bool {
-    name.starts_with(&file_prefix(position)) && !is_mp3(name)
+/// True for every file of the track at `position`, finished or not.
+pub fn belongs_to(position: usize, name: &str) -> bool {
+    name.starts_with(&file_prefix(position))
 }
 
 /// The folder name for a playlist: the characters some file systems (and USB
@@ -66,11 +65,13 @@ pub fn list(directory: &Path) -> io::Result<Vec<String>> {
     Ok(names)
 }
 
-/// Deletes what a failed download of the track at `position` left in
-/// `directory`. Best effort: a file that cannot be deleted is left there.
-pub fn remove_leftovers(directory: &Path, position: usize) {
+/// Deletes every file of the track at `position` from `directory`: after a
+/// failure even an MP3 is not to be trusted, since yt-dlp writes it before
+/// the steps that cut and tag it. Best effort: a file that cannot be deleted
+/// is left there.
+pub fn remove_track(directory: &Path, position: usize) {
     for name in list(directory).unwrap_or_default() {
-        if is_leftover(position, &name) {
+        if belongs_to(position, &name) {
             let _ = fs::remove_file(directory.join(name));
         }
     }
@@ -105,14 +106,14 @@ mod tests {
     }
 
     #[test]
-    fn leftovers_are_the_unfinished_files_of_that_track_only() {
-        assert!(is_leftover(2, "02_Song.jpg"));
-        assert!(is_leftover(2, "02_Song.webm.part"));
-        assert!(is_leftover(2, "02_Song"));
-        assert!(!is_leftover(2, "02_Song.mp3"));
-        assert!(!is_leftover(2, "03_Other.jpg"));
-        assert!(!is_leftover(2, "cover.jpg"));
-        assert!(!is_leftover(2, "lista_brani.txt"));
+    fn a_track_owns_every_file_with_its_position() {
+        assert!(belongs_to(2, "02_Song.jpg"));
+        assert!(belongs_to(2, "02_Song.webm.part"));
+        assert!(belongs_to(2, "02_Song.mp3"));
+        assert!(!belongs_to(2, "03_Other.jpg"));
+        assert!(!belongs_to(2, "102_Other.mp3"));
+        assert!(!belongs_to(2, "cover.jpg"));
+        assert!(!belongs_to(2, "lista_brani.txt"));
     }
 
     #[test]
@@ -146,14 +147,11 @@ mod tests {
         ] {
             fs::write(dir.join(name), b"").unwrap();
         }
-        remove_leftovers(&dir, 3);
-        assert_eq!(
-            list(&dir).unwrap(),
-            ["03_Song.mp3", "04_Other.jpg", "notes.txt"]
-        );
+        remove_track(&dir, 3);
+        assert_eq!(list(&dir).unwrap(), ["04_Other.jpg", "notes.txt"]);
         assert!(dir.join("03_a_folder").is_dir());
 
-        remove_leftovers(&dir.join("missing"), 1);
+        remove_track(&dir.join("missing"), 1);
         fs::remove_dir_all(&dir).unwrap();
     }
 }
