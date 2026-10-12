@@ -42,14 +42,28 @@ freezes.
   pretend backend: a song with "live" in its name has non-music parts, one
   with "missing" fails. Nothing is downloaded.
 
+## Installers
+
+`just bundle` fetches the tools and builds the installer for the system it
+runs on. `app/scripts/tools.json` pins, for each system, the address and the
+SHA-256 of yt-dlp, ffmpeg, ffprobe and Deno; `bun run fetch-tools` downloads
+them into `app/src-tauri/tools`, refusing any file whose checksum differs.
+That folder is bundled as a resource, and at run time the app uses the tools
+in it, falling back to `PATH` when it is empty (development).
+
+To update a tool, change its address and checksum in `tools.json`.
+
+The `Release` workflow builds the installers for Linux, Windows and macOS
+(Apple Silicon) on every `v*` tag and attaches them to a draft release; it
+also runs on pull requests that touch the packaging.
+
+The installers are not signed: macOS and Windows warn before opening them.
+
 ## Not there yet
 
-- The installers do not bundle yt-dlp, ffmpeg and Deno yet. The app already
-  looks for them in its `tools` resource folder (`app/src-tauri/tools` at
-  build time) and falls back to `PATH`; what is missing is the step that
-  fetches them for each system. An app opened from the Finder or the Start
-  menu does not see the `PATH` of a terminal, so until then the app is only
-  usable through `just dev`.
+- No installer for Intel Macs, although the tools for them are pinned.
+- yt-dlp inside an installed app does not update itself.
+
 - No way to stop a download once started.
 - The window is tested through its pure parts and by hand in the preview;
   there is no automated test that drives the real window.

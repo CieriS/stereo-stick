@@ -45,6 +45,7 @@ On Linux, also the [libraries Tauri asks for](https://tauri.app/start/prerequisi
 |---|---|
 | `just dev` | Open the desktop app, reloading on changes |
 | `just preview` | The window alone in a browser, with a pretend backend |
+| `just bundle` | Build the installer for this system, with the download tools inside |
 | `just check` | Lints, tests and frontend build: what CI runs |
 | `just test` | Tests only |
 | `just fmt` | Format the code |
@@ -69,4 +70,5 @@ sites you use and the copyright law of your country.
 
 ## Licence
 
-[MIT](LICENSE)
+[MIT](LICENSE). The installers also contain yt-dlp, FFmpeg and Deno, each
+under its own licence: see [THIRD_PARTY.md](THIRD_PARTY.md).
