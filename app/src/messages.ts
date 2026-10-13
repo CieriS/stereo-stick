@@ -27,6 +27,15 @@ const en = {
   missingTracks: "Add at least one song.",
   missingPlaylist: "Give the playlist a name.",
   missingFolder: "Choose the music folder.",
+  stickTitle: "USB stick",
+  stickHint: "Copies the songs that are new or changed. Nothing on the stick is deleted.",
+  stickFolderLabel: "Where the stick is",
+  stickEmpty: "No stick chosen",
+  copyToStick: "Copy to the stick",
+  stickUpToDate: "The stick is already up to date.",
+  stickEject: "Eject the stick before unplugging it.",
+  stickOverlap: "The stick cannot be the music folder, or a folder inside it.",
+  missingStick: "Choose where the stick is.",
   demoNotice: "Preview without the desktop app: nothing is really downloaded.",
   status: {
     idle: "",
@@ -47,6 +56,8 @@ const en = {
   summary: (downloaded: number, present: number, failed: number) =>
     `${downloaded} downloaded · ${present} already there · ${failed} failed`,
   stoppedCount: (n: number) => `${n} stopped`,
+  stickSummary: (copied: number, upToDate: number, failed: number) =>
+    `${copied} copied · ${upToDate} already there · ${failed} failed`,
   seconds: (n: number) => `${n} s`,
   minutes: (m: number, s: number) => `${m} min ${s} s`,
 };
@@ -80,6 +91,16 @@ const it: Messages = {
   missingTracks: "Aggiungi almeno una canzone.",
   missingPlaylist: "Dai un nome alla playlist.",
   missingFolder: "Scegli la cartella della musica.",
+  stickTitle: "Chiavetta",
+  stickHint: "Copia le canzoni nuove o cambiate. Dalla chiavetta non viene cancellato nulla.",
+  stickFolderLabel: "Dove si trova la chiavetta",
+  stickEmpty: "Nessuna chiavetta scelta",
+  copyToStick: "Copia sulla chiavetta",
+  stickUpToDate: "La chiavetta è già aggiornata.",
+  stickEject: "Espelli la chiavetta prima di sfilarla.",
+  stickOverlap:
+    "La chiavetta non può essere la cartella della musica, né una cartella al suo interno.",
+  missingStick: "Scegli dove si trova la chiavetta.",
   demoNotice: "Anteprima senza l'app desktop: non viene scaricato nulla davvero.",
   status: {
     idle: "",
@@ -102,6 +123,10 @@ const it: Messages = {
       present === 1 ? "presente" : "presenti"
     } · ${failed} non ${failed === 1 ? "riuscita" : "riuscite"}`,
   stoppedCount: (n) => `${n} ${n === 1 ? "interrotta" : "interrotte"}`,
+  stickSummary: (copied, upToDate, failed) =>
+    `${copied} ${copied === 1 ? "copiata" : "copiate"} · ${upToDate} già ${
+      upToDate === 1 ? "presente" : "presenti"
+    } · ${failed} non ${failed === 1 ? "riuscita" : "riuscite"}`,
   seconds: (n) => `${n} s`,
   minutes: (m, s) => `${m} min ${s} s`,
 };

@@ -21,6 +21,8 @@ there are no installers yet.
   video has none.
 - Skips the tracks that are already in the folder and cleans up after a failed
   download.
+- Copies the music folder to a USB stick: only what is new or changed, only
+  music, never deleting anything on the stick.
 - Reports progress and the outcome track by track; one failure never stops
   the rest, and a download can be stopped at any time.
 
@@ -28,7 +30,7 @@ there are no installers yet.
 
 1. ~~Engine: track list, checks, download, report~~
 2. ~~Desktop app (Tauri): one playlist, progress per track, final report~~
-3. USB stick: detect the drive, copy only what changed, eject
+3. USB stick: ~~copy only what changed~~, detect the drive, eject
 4. Song details from a music catalogue (official title, artist, length) to
    pick the right video and to catch edits the community has not reviewed
 5. Import a playlist from Spotify ([issue 1](https://github.com/CieriS/stereo-stick/issues/1))

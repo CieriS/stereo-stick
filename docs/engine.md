@@ -10,6 +10,7 @@ sits in the middle; the only way out to the world is the `Downloader` trait.
 | `ytdlp` | Builds the yt-dlp command lines and reads its error output (pure) |
 | `playlist` | The `Downloader` port, plus checking and downloading a whole playlist, with events and a report |
 | `files` | Which tracks are already in a folder, cleaning up after a failure, safe folder names |
+| `stick` | What to copy to a USB stick, and the copy itself |
 | `process` | The adapter that runs the real yt-dlp program, and tells whether it can be started |
 
 ## Track list format
@@ -69,6 +70,23 @@ as `Downloaded`, `AlreadyPresent`, `Stopped` or `Failed`.
 - **After a failure**: every file of that track is deleted, the MP3 too:
   yt-dlp writes it before the steps that cut and tag it, so after a failure it
   cannot be trusted, and left there it would pass for a finished track.
+
+## USB stick
+
+`stick::scan` lists the tracks of a folder: MP3 files inside its playlist
+folders. Hidden files and folders (`.DS_Store`, `._name`), which make some
+car stereos stumble, are left out, and so is anything that is not music.
+`stick::plan` compares the music folder with the stick and returns what is
+missing or changed there: a different size, or a copy older than the
+original by more than two seconds (FAT keeps times to two seconds).
+`stick::copy` copies those tracks through a `.part` name, so an interrupted
+copy never passes for a finished file.
+
+Nothing on the stick is ever deleted, and folders that contain each other
+are refused (`stick::overlap`).
+
+Downloads use `--windows-filenames`, so that titles with characters FAT
+refuses (`?`, `:`, `"`) still produce files a stick accepts.
 
 ## Tools
 

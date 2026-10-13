@@ -287,3 +287,12 @@ progress {
 .track.alreadyPresent .status {
   color: var(--ok);
 }
+
+.failures {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}

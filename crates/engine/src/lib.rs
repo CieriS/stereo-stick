@@ -6,5 +6,6 @@ pub mod files;
 pub mod playlist;
 pub mod probe;
 pub mod process;
+pub mod stick;
 pub mod tracklist;
 pub mod ytdlp;

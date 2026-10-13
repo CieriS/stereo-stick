@@ -47,6 +47,8 @@ describe("plurals", () => {
     expect(it.nonMusic("5 s", 2)).toBe("5 s che non sono musica, in 2 parti");
     expect(it.summary(1, 1, 1)).toBe("1 scaricata · 1 già presente · 1 non riuscita");
     expect(it.summary(2, 0, 3)).toBe("2 scaricate · 0 già presenti · 3 non riuscite");
+    expect(it.stickSummary(1, 1, 1)).toBe("1 copiata · 1 già presente · 1 non riuscita");
+    expect(it.stickSummary(3, 0, 2)).toBe("3 copiate · 0 già presenti · 2 non riuscite");
     expect(it.stoppedCount(1)).toBe("1 interrotta");
     expect(it.stoppedCount(4)).toBe("4 interrotte");
   });
