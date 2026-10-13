@@ -5,15 +5,21 @@
 mod dto;
 
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use engine::playlist::{self, NonMusic, Request};
 use engine::process::YtDlp;
 use engine::{files, tracklist};
 use serde::Deserialize;
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
 
 use dto::{CheckResult, Progress, Track};
+
+/// Raised by the window to stop the download in progress.
+#[derive(Default)]
+struct Stop(Arc<AtomicBool>);
 
 /// The tools shipped with the app when they are there, otherwise the yt-dlp
 /// found in `PATH` (development).
@@ -76,9 +82,12 @@ struct DownloadRequest {
 #[tauri::command]
 async fn download_list(
     app: AppHandle,
+    stop: State<'_, Stop>,
     request: DownloadRequest,
     on_progress: Channel<Progress>,
 ) -> Result<(), String> {
+    let stop = Arc::clone(&stop.0);
+    stop.store(false, Ordering::Relaxed);
     off_the_window_thread(move || {
         let folder = files::folder_name(&request.playlist).ok_or("playlist-name")?;
         let directory = request.music_folder.join(folder);
@@ -96,6 +105,7 @@ async fn download_list(
                     NonMusic::Keep
                 },
                 existing: &existing,
+                stop: &stop,
             },
             &mut |event| {
                 // A window that stopped listening is no reason to stop downloading.
@@ -105,6 +115,13 @@ async fn download_list(
         Ok(())
     })
     .await
+}
+
+/// Stops the download in progress: the track in flight is abandoned and the
+/// ones after it are not started.
+#[tauri::command]
+fn stop_download(stop: State<'_, Stop>) {
+    stop.0.store(true, Ordering::Relaxed);
 }
 
 /// True when the download tool can be started at all.
@@ -118,10 +135,12 @@ async fn tool_available(app: AppHandle) -> bool {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .manage(Stop::default())
         .invoke_handler(tauri::generate_handler![
             parse_list,
             check_list,
             download_list,
+            stop_download,
             tool_available
         ])
         .run(tauri::generate_context!())

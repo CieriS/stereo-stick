@@ -20,6 +20,8 @@ export interface Backend {
   parseList(text: string): Promise<Track[]>;
   checkList(text: string, onResult: (result: CheckResult) => void): Promise<void>;
   downloadList(request: DownloadRequest, onProgress: (event: Progress) => void): Promise<void>;
+  /** Asks the download in progress to stop; `downloadList` then ends early. */
+  stopDownload(): Promise<void>;
   /** Asks the user for a folder; `null` when they change their mind. */
   chooseFolder(): Promise<string | null>;
 }
@@ -38,6 +40,7 @@ const desktopBackend: Backend = {
     channel.onmessage = onProgress;
     return invoke("download_list", { request, onProgress: channel });
   },
+  stopDownload: () => invoke("stop_download"),
   chooseFolder: () => open({ directory: true, multiple: false }),
 };
 

@@ -20,6 +20,7 @@ export type Progress =
   | { kind: "progress"; position: number; fraction: number }
   | { kind: "downloaded"; position: number }
   | { kind: "alreadyPresent"; position: number }
+  | { kind: "stopped"; position: number }
   | { kind: "failed"; position: number; error: string };
 
 export type TrackStatus =
@@ -32,6 +33,7 @@ export type TrackStatus =
   | "downloading"
   | "downloaded"
   | "alreadyPresent"
+  | "stopped"
   | "failed";
 
 export interface TrackView extends Track {
@@ -127,6 +129,8 @@ export function applyProgress(state: State, event: Progress): State {
         return { ...track, status: "downloaded", fraction: 1 };
       case "alreadyPresent":
         return { ...track, status: "alreadyPresent" };
+      case "stopped":
+        return { ...track, status: "stopped", fraction: undefined };
       case "failed":
         return { ...track, status: "failed", error: event.error };
     }
@@ -138,6 +142,7 @@ export interface Summary {
   total: number;
   downloaded: number;
   alreadyPresent: number;
+  stopped: number;
   failed: number;
   flagged: number;
 }
@@ -148,6 +153,7 @@ export function summarize(state: State): Summary {
     total: state.tracks.length,
     downloaded: count("downloaded"),
     alreadyPresent: count("alreadyPresent"),
+    stopped: count("stopped"),
     failed: count("failed"),
     flagged: state.tracks.filter((t) => (t.nonMusicParts ?? 0) > 0).length,
   };
@@ -156,7 +162,7 @@ export function summarize(state: State): Summary {
 /** Fraction of the whole playlist that is done, for the overall bar. */
 export function overallFraction(state: State): number {
   if (state.tracks.length === 0) return 0;
-  const done: TrackStatus[] = ["downloaded", "alreadyPresent", "failed"];
+  const done: TrackStatus[] = ["downloaded", "alreadyPresent", "stopped", "failed"];
   const sum = state.tracks.reduce((total, track) => {
     if (done.includes(track.status)) return total + 1;
     return total + (track.status === "downloading" ? (track.fraction ?? 0) : 0);
