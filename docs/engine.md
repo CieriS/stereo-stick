@@ -51,7 +51,7 @@ case once song details are available (see the roadmap).
 
 `playlist::download` takes a `Request` and reports `Event`s as they happen
 (`Started`, `Progress`, `Finished`), then returns a `Report`. Each track ends
-as `Downloaded`, `AlreadyPresent` or `Failed`.
+as `Downloaded`, `AlreadyPresent`, `Stopped` or `Failed`.
 
 - **Already there**: a track is skipped when the folder holds an MP3 whose
   name begins with its position (`07_`). Tracks are recognised by position
@@ -61,6 +61,11 @@ as `Downloaded`, `AlreadyPresent` or `Failed`.
 - **Progress**: yt-dlp prints one `PROGRESS <downloaded> <total>` line per
   update (`--progress-template`); it covers the download, not the conversion
   to MP3 that follows. Downloads of unknown size report nothing.
+- **Stopping**: setting the request's `stop` flag abandons the track in
+  flight and marks it and the ones after it as `Stopped`. The adapter ends
+  yt-dlp together with everything it started (the released yt-dlp is a
+  launcher that starts the real program, which starts ffmpeg), and deletes
+  the files of the abandoned track.
 - **After a failure**: every file of that track is deleted, the MP3 too:
   yt-dlp writes it before the steps that cut and tag it, so after a failure it
   cannot be trusted, and left there it would pass for a finished track.

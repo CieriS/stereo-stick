@@ -17,6 +17,8 @@ function parse(text: string): Track[] {
 
 const has = (track: Track, word: string) => track.name.toLowerCase().includes(word);
 
+let stopRequested = false;
+
 export const demoBackend: Backend = {
   demo: true,
   toolAvailable: async () => true,
@@ -39,19 +41,27 @@ export const demoBackend: Backend = {
     }
   },
   async downloadList(request, onProgress) {
-    for (const { position, ...track } of parse(request.text)) {
-      onProgress({ kind: "started", position });
+    stopRequested = false;
+    for (const track of parse(request.text)) {
+      const { position } = track;
+      if (!stopRequested) onProgress({ kind: "started", position });
       for (const fraction of [0.2, 0.45, 0.7, 0.95]) {
+        if (stopRequested) break;
         await pause(180);
         onProgress({ kind: "progress", position, fraction });
       }
-      await pause(180);
-      if (has({ position, ...track }, "missing")) {
+      if (!stopRequested) await pause(180);
+      if (stopRequested) {
+        onProgress({ kind: "stopped", position });
+      } else if (has(track, "missing")) {
         onProgress({ kind: "failed", position, error: "Video unavailable" });
       } else {
         onProgress({ kind: "downloaded", position });
       }
     }
+  },
+  stopDownload: async () => {
+    stopRequested = true;
   },
   chooseFolder: async () => "/Music/Car",
 };

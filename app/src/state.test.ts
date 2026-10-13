@@ -120,6 +120,20 @@ describe("downloading", () => {
     expect(state.tracks[2]?.error).toBe("gone");
   });
 
+  test("a stopped download keeps what was done and marks the rest as stopped", () => {
+    let state = startDownloading(three());
+    state = applyProgress(state, { kind: "downloaded", position: 1 });
+    state = applyProgress(state, { kind: "progress", position: 2, fraction: 0.6 });
+    state = applyProgress(state, { kind: "stopped", position: 2 });
+    state = applyProgress(state, { kind: "stopped", position: 3 });
+    state = settle(state);
+    expect(state.phase).toBe("done");
+    expect(statuses(state)).toEqual(["downloaded", "stopped", "stopped"]);
+    expect(state.tracks[1]?.fraction).toBeUndefined();
+    expect(summarize(state)).toMatchObject({ downloaded: 1, stopped: 2, failed: 0 });
+    expect(overallFraction(state)).toBe(1);
+  });
+
   test("when the download ends the phase is done", () => {
     let state = startDownloading(three());
     for (const position of [1, 2, 3]) {
@@ -158,6 +172,7 @@ describe("summary", () => {
       total: 3,
       downloaded: 1,
       alreadyPresent: 1,
+      stopped: 0,
       failed: 1,
       flagged: 1,
     });
@@ -168,6 +183,7 @@ describe("summary", () => {
       total: 0,
       downloaded: 0,
       alreadyPresent: 0,
+      stopped: 0,
       failed: 0,
       flagged: 0,
     });

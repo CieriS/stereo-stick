@@ -17,6 +17,8 @@ const en = {
   removeNonMusicHint: "Spoken intros, applause, scenes in the middle of a video clip.",
   check: "Check",
   download: "Download",
+  stop: "Stop",
+  stopping: "Stopping…",
   working: "Working…",
   tracksTitle: "Tracks",
   noTracks: "Write a song above to get started.",
@@ -36,6 +38,7 @@ const en = {
     downloading: "Downloading",
     downloaded: "Downloaded",
     alreadyPresent: "Already there",
+    stopped: "Stopped",
     failed: "Failed",
   },
   nonMusic: (seconds: string, parts: number) =>
@@ -43,6 +46,7 @@ const en = {
   count: (n: number) => `${n} ${n === 1 ? "song" : "songs"}`,
   summary: (downloaded: number, present: number, failed: number) =>
     `${downloaded} downloaded · ${present} already there · ${failed} failed`,
+  stoppedCount: (n: number) => `${n} stopped`,
   seconds: (n: number) => `${n} s`,
   minutes: (m: number, s: number) => `${m} min ${s} s`,
 };
@@ -66,6 +70,8 @@ const it: Messages = {
   removeNonMusicHint: "Introduzioni parlate, applausi, scene in mezzo al videoclip.",
   check: "Controlla",
   download: "Scarica",
+  stop: "Ferma",
+  stopping: "Mi fermo…",
   working: "Sto lavorando…",
   tracksTitle: "Brani",
   noTracks: "Scrivi una canzone qui sopra per iniziare.",
@@ -85,6 +91,7 @@ const it: Messages = {
     downloading: "Scarico",
     downloaded: "Scaricato",
     alreadyPresent: "Già presente",
+    stopped: "Interrotto",
     failed: "Non riuscito",
   },
   nonMusic: (seconds, parts) =>
@@ -94,6 +101,7 @@ const it: Messages = {
     `${downloaded} ${downloaded === 1 ? "scaricata" : "scaricate"} · ${present} già ${
       present === 1 ? "presente" : "presenti"
     } · ${failed} non ${failed === 1 ? "riuscita" : "riuscite"}`,
+  stoppedCount: (n) => `${n} ${n === 1 ? "interrotta" : "interrotte"}`,
   seconds: (n) => `${n} s`,
   minutes: (m, s) => `${m} min ${s} s`,
 };

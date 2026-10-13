@@ -72,6 +72,9 @@ pub enum Progress {
     AlreadyPresent {
         position: usize,
     },
+    Stopped {
+        position: usize,
+    },
     Failed {
         position: usize,
         error: String,
@@ -86,6 +89,7 @@ impl From<Event<'_>> for Progress {
             Event::Finished { position, outcome } => match outcome {
                 Outcome::Downloaded => Self::Downloaded { position },
                 Outcome::AlreadyPresent => Self::AlreadyPresent { position },
+                Outcome::Stopped => Self::Stopped { position },
                 Outcome::Failed(error) => Self::Failed {
                     position,
                     error: error.to_string(),
@@ -186,6 +190,13 @@ mod tests {
                     outcome: &Outcome::AlreadyPresent,
                 },
                 json!({"kind": "alreadyPresent", "position": 2}),
+            ),
+            (
+                Event::Finished {
+                    position: 2,
+                    outcome: &Outcome::Stopped,
+                },
+                json!({"kind": "stopped", "position": 2}),
             ),
             (
                 Event::Finished {

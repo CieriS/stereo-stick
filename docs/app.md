@@ -19,13 +19,14 @@ user's languages, English otherwise. A new language is one more object in
 
 ## Shell
 
-`app/src-tauri/src/lib.rs` exposes four commands, all thin:
+`app/src-tauri/src/lib.rs` exposes five commands, all thin:
 
 | Command | What it does |
 |---|---|
 | `parse_list` | The tracks of the text, to show while the user types |
 | `check_list` | Describes each track without downloading, one result at a time |
 | `download_list` | Downloads the playlist into `<music folder>/<playlist>`, sending progress |
+| `stop_download` | Raises the flag that stops the download in progress |
 | `tool_available` | Whether yt-dlp can be started |
 
 `dto.rs` converts the engine's types into what the window receives; the
@@ -40,7 +41,7 @@ freezes.
   ffmpeg and Deno next to it.
 - `just preview` serves the window alone at <http://localhost:4340> with the
   pretend backend: a song with "live" in its name has non-music parts, one
-  with "missing" fails. Nothing is downloaded.
+  with "missing" fails. Nothing is downloaded, and Stop works as in the app.
 
 ## Installers
 
@@ -64,6 +65,5 @@ The installers are not signed: macOS and Windows warn before opening them.
 - No installer for Intel Macs, although the tools for them are pinned.
 - yt-dlp inside an installed app does not update itself.
 
-- No way to stop a download once started.
 - The window is tested through its pure parts and by hand in the preview;
   there is no automated test that drives the real window.

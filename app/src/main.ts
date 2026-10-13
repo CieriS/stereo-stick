@@ -42,6 +42,7 @@ const chooseFolder = el("button", { type: "button", class: "secondary" }, t.choo
 const removeNonMusic = el("input", { id: "remove", type: "checkbox", checked: true });
 const checkButton = el("button", { type: "button", class: "secondary" }, t.check);
 const downloadButton = el("button", { type: "button", class: "primary" }, t.download);
+const stopButton = el("button", { type: "button", class: "secondary", hidden: true }, t.stop);
 const notice = el("p", { class: "notice", role: "alert", hidden: true });
 const trackCount = el("span", { class: "muted" });
 const overall = el("progress", { max: 1, value: 0, hidden: true });
@@ -84,7 +85,7 @@ app.append(
       el("span", {}, t.removeNonMusic, el("small", { class: "hint" }, t.removeNonMusicHint)),
     ),
     notice,
-    el("div", { class: "actions" }, checkButton, downloadButton),
+    el("div", { class: "actions" }, checkButton, stopButton, downloadButton),
   ),
   el(
     "section",
@@ -140,6 +141,11 @@ function render() {
   checkButton.disabled = busy || empty || !toolAvailable;
   downloadButton.disabled = busy || empty || !toolAvailable;
   downloadButton.textContent = busy ? t.working : t.download;
+  stopButton.hidden = state.phase !== "downloading";
+  if (state.phase !== "downloading") {
+    stopButton.disabled = false;
+    stopButton.textContent = t.stop;
+  }
 
   trackCount.textContent = empty ? "" : t.count(state.tracks.length);
   tracks.replaceChildren(
@@ -150,7 +156,9 @@ function render() {
   overall.value = overallFraction(state);
   const totals = summarize(state);
   summary.hidden = state.phase !== "done";
-  summary.textContent = t.summary(totals.downloaded, totals.alreadyPresent, totals.failed);
+  const outcome = t.summary(totals.downloaded, totals.alreadyPresent, totals.failed);
+  summary.textContent =
+    totals.stopped > 0 ? `${outcome} · ${t.stoppedCount(totals.stopped)}` : outcome;
   summary.classList.toggle("has-failures", totals.failed > 0);
 }
 
@@ -211,6 +219,11 @@ async function download() {
 list.addEventListener("input", listEdited);
 checkButton.addEventListener("click", check);
 downloadButton.addEventListener("click", download);
+stopButton.addEventListener("click", async () => {
+  stopButton.disabled = true;
+  stopButton.textContent = t.stopping;
+  await backend.stopDownload();
+});
 chooseFolder.addEventListener("click", async () => {
   const chosen = await backend.chooseFolder();
   if (chosen) {

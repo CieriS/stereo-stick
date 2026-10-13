@@ -22,7 +22,7 @@ there are no installers yet.
 - Skips the tracks that are already in the folder and cleans up after a failed
   download.
 - Reports progress and the outcome track by track; one failure never stops
-  the rest.
+  the rest, and a download can be stopped at any time.
 
 ## Roadmap
 
