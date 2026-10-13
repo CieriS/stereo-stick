@@ -5,6 +5,8 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use engine::files;
 use engine::playlist::{self, DownloadError, Downloader, Event, NonMusic, Request};
@@ -43,6 +45,12 @@ fi
 mkdir -p "$dir"
 echo "[download] Destination: $name.webm"
 echo "PROGRESS 50 200"
+case "$source" in *endless*)
+  : > "$dir/$name.webm.part"
+  sleep 300 &
+  echo $! > "$here/helper.pid"
+  wait;;
+esac
 case "$source" in *missing*)
   : > "$dir/$name.jpg"; : > "$dir/$name.webm.part"; : > "$dir/$name.mp3"
   fail;;
@@ -50,6 +58,8 @@ esac
 echo "PROGRESS 200 200"
 : > "$dir/$name.mp3"
 "#;
+
+static NEVER: AtomicBool = AtomicBool::new(false);
 
 struct Sandbox(PathBuf);
 
@@ -85,6 +95,7 @@ fn request<'a>(
     existing: &'a [String],
 ) -> Request<'a> {
     Request {
+        stop: &NEVER,
         playlist: "sc_song_ita",
         directory: out,
         entries,
@@ -160,6 +171,50 @@ fn a_playlist_is_downloaded_track_by_track() {
         );
     }
     assert!(log.lines().any(|line| Path::new(line) == out));
+}
+
+#[test]
+fn stopping_ends_yt_dlp_and_what_it_started_and_leaves_nothing() {
+    let sandbox = Sandbox::new("stop");
+    let out = sandbox.path("out");
+    let entries = tracklist::parse("first song\nendless song\nthird song");
+    let stop = AtomicBool::new(false);
+    let helper = sandbox.path("helper.pid");
+    let started = Instant::now();
+
+    let report = std::thread::scope(|scope| {
+        scope.spawn(|| {
+            while !helper.exists() {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            stop.store(true, Ordering::Relaxed);
+        });
+        playlist::download(
+            &sandbox.downloader(),
+            &Request {
+                stop: &stop,
+                ..request(&out, &entries, &[])
+            },
+            &mut |_| {},
+        )
+    });
+
+    assert!(started.elapsed() < Duration::from_secs(30), "did not stop");
+    assert_eq!(report.downloaded(), 1);
+    assert_eq!(report.stopped(), 2);
+    assert_eq!(report.failed().count(), 0);
+    assert_eq!(files::list(&out).unwrap(), ["01_Song.mp3"]);
+
+    // The process the stand-in started is gone too.
+    let pid = fs::read_to_string(&helper).unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    let alive = std::process::Command::new("kill")
+        .args(["-0", pid.trim()])
+        .stderr(std::process::Stdio::null())
+        .status()
+        .unwrap()
+        .success();
+    assert!(!alive, "the helper process survived");
 }
 
 #[test]

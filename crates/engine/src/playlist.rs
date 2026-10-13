@@ -4,6 +4,7 @@
 
 use std::fmt;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::files;
 use crate::probe::{ProbeError, VideoInfo};
@@ -17,6 +18,8 @@ pub enum DownloadError {
     Failed(String),
     /// The tool answered with something that cannot be read.
     Unreadable(String),
+    /// The user asked to stop while this track was downloading.
+    Stopped,
 }
 
 impl fmt::Display for DownloadError {
@@ -24,6 +27,7 @@ impl fmt::Display for DownloadError {
         match self {
             Self::Unavailable(reason) => write!(f, "download tool not available: {reason}"),
             Self::Failed(reason) | Self::Unreadable(reason) => f.write_str(reason),
+            Self::Stopped => f.write_str("stopped"),
         }
     }
 }
@@ -63,11 +67,14 @@ pub trait Downloader {
     fn probe(&self, source: &Source) -> Result<VideoInfo, DownloadError>;
 
     /// Downloads one track, calling `on_progress` with the fraction (0 to 1)
-    /// downloaded so far. After a failure nothing unfinished is left on disk.
+    /// downloaded so far. When `stop` becomes true the download is abandoned
+    /// with [`DownloadError::Stopped`]. After a failure or a stop nothing of
+    /// the track is left on disk.
     fn download(
         &self,
         job: &Job<'_>,
         on_progress: &mut dyn FnMut(f32),
+        stop: &AtomicBool,
     ) -> Result<(), DownloadError>;
 }
 
@@ -103,6 +110,8 @@ pub enum Outcome {
     Downloaded,
     /// Its MP3 was already in the folder; nothing was downloaded.
     AlreadyPresent,
+    /// The user stopped the download before this track was finished.
+    Stopped,
     Failed(DownloadError),
 }
 
@@ -148,6 +157,10 @@ impl Report {
         self.count(&Outcome::AlreadyPresent)
     }
 
+    pub fn stopped(&self) -> usize {
+        self.count(&Outcome::Stopped)
+    }
+
     pub fn failed(&self) -> impl Iterator<Item = (&Entry, &DownloadError)> {
         self.tracks.iter().filter_map(|t| match &t.outcome {
             Outcome::Failed(error) => Some((&t.entry, error)),
@@ -166,6 +179,9 @@ pub struct Request<'a> {
     /// Names of the files already in `directory`: tracks whose MP3 is among
     /// them are skipped. Pass an empty slice to download everything again.
     pub existing: &'a [String],
+    /// Set to true, from anywhere, to stop: the track in flight is abandoned
+    /// and the ones after it are not started.
+    pub stop: &'a AtomicBool,
 }
 
 /// Downloads every track of the request that is not already there, telling
@@ -178,8 +194,13 @@ pub fn download(
     let mut tracks = Vec::with_capacity(request.entries.len());
     for entry in request.entries {
         let position = entry.position;
-        on_event(Event::Started { position });
-        let outcome = if files::is_downloaded(position, request.existing) {
+        let stopped = || request.stop.load(Ordering::Relaxed);
+        if !stopped() {
+            on_event(Event::Started { position });
+        }
+        let outcome = if stopped() {
+            Outcome::Stopped
+        } else if files::is_downloaded(position, request.existing) {
             Outcome::AlreadyPresent
         } else {
             let job = Job {
@@ -189,8 +210,9 @@ pub fn download(
                 non_music: request.non_music,
             };
             let mut on_progress = |fraction| on_event(Event::Progress { position, fraction });
-            match downloader.download(&job, &mut on_progress) {
+            match downloader.download(&job, &mut on_progress, request.stop) {
                 Ok(()) => Outcome::Downloaded,
+                Err(DownloadError::Stopped) => Outcome::Stopped,
                 Err(error) => Outcome::Failed(error),
             }
         };
@@ -219,6 +241,8 @@ mod tests {
 
     /// Fails every track whose search contains "missing"; flags as partly
     /// non-music every track whose search contains "videoclip".
+    /// A track whose search contains "stop here" raises the stop flag while
+    /// it downloads, as a user pressing the button would.
     #[derive(Default)]
     struct FakeDownloader {
         downloads: RefCell<Vec<String>>,
@@ -252,8 +276,13 @@ mod tests {
             &self,
             job: &Job<'_>,
             on_progress: &mut dyn FnMut(f32),
+            stop: &AtomicBool,
         ) -> Result<(), DownloadError> {
             let query = job.entry.source.to_ytdlp_arg();
+            if query.contains("stop here") {
+                stop.store(true, Ordering::Relaxed);
+                return Err(DownloadError::Stopped);
+            }
             self.downloads.borrow_mut().push(format!(
                 "{}|{}|{}|{:?}",
                 job.entry.position,
@@ -271,8 +300,11 @@ mod tests {
         }
     }
 
+    static NEVER: AtomicBool = AtomicBool::new(false);
+
     fn request<'a>(entries: &'a [Entry], existing: &'a [String]) -> Request<'a> {
         Request {
+            stop: &NEVER,
             playlist: "mix",
             directory: Path::new("out"),
             entries,
@@ -340,6 +372,7 @@ mod tests {
                     Event::Finished { position, outcome } => match outcome {
                         Outcome::Downloaded => format!("{position} downloaded"),
                         Outcome::AlreadyPresent => format!("{position} present"),
+                        Outcome::Stopped => format!("{position} stopped"),
                         Outcome::Failed(error) => format!("{position} failed: {error}"),
                     },
                 });
@@ -359,6 +392,54 @@ mod tests {
                 "3 present",
             ]
         );
+    }
+
+    #[test]
+    fn stopping_abandons_the_track_in_flight_and_skips_the_rest() {
+        let entries = tracklist::parse("one\nstop here\nthree\nfour");
+        let existing = ["04_Four.mp3".to_owned()];
+        let stop = AtomicBool::new(false);
+        let downloader = FakeDownloader::default();
+        let mut story = Vec::new();
+        let report = download(
+            &downloader,
+            &Request {
+                stop: &stop,
+                ..request(&entries, &existing)
+            },
+            &mut |event| {
+                story.push(match event {
+                    Event::Started { position } => format!("{position} started"),
+                    Event::Progress { position, .. } => format!("{position} progress"),
+                    Event::Finished { position, outcome } => format!("{position} {outcome:?}"),
+                });
+            },
+        );
+        assert_eq!(report.downloaded(), 1);
+        assert_eq!(report.stopped(), 3);
+        assert_eq!(report.failed().count(), 0);
+        assert_eq!(*downloader.downloads.borrow(), ["1|mix|out|Remove"]);
+        assert_eq!(
+            story[4..],
+            ["2 started", "2 Stopped", "3 Stopped", "4 Stopped"]
+        );
+    }
+
+    #[test]
+    fn a_stop_requested_before_starting_downloads_nothing() {
+        let entries = tracklist::parse("one\ntwo");
+        let stop = AtomicBool::new(true);
+        let downloader = FakeDownloader::default();
+        let report = download(
+            &downloader,
+            &Request {
+                stop: &stop,
+                ..request(&entries, &[])
+            },
+            &mut |_| {},
+        );
+        assert_eq!(report.stopped(), 2);
+        assert!(downloader.downloads.borrow().is_empty());
     }
 
     #[test]
