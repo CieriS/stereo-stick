@@ -7,6 +7,7 @@ around a small TypeScript frontend (`app/src`), with no UI framework.
 
 | File | Role |
 |---|---|
+| `stick.ts` | What the window knows about copying to the stick (pure, tested) |
 | `state.ts` | What the window knows and how it changes (pure, tested) |
 | `messages.ts` | Every word shown, in English and Italian (pure, tested) |
 | `backend.ts` | The only door to the rest of the app: the `Backend` interface and its desktop version |
@@ -19,14 +20,15 @@ user's languages, English otherwise. A new language is one more object in
 
 ## Shell
 
-`app/src-tauri/src/lib.rs` exposes five commands, all thin:
+`app/src-tauri/src/lib.rs` exposes six commands, all thin:
 
 | Command | What it does |
 |---|---|
 | `parse_list` | The tracks of the text, to show while the user types |
 | `check_list` | Describes each track without downloading, one result at a time |
 | `download_list` | Downloads the playlist into `<music folder>/<playlist>`, sending progress |
-| `stop_download` | Raises the flag that stops the download in progress |
+| `copy_to_stick` | Copies what is new or changed from the music folder to the stick |
+| `stop_download` | Raises the flag that stops the download or the copy in progress |
 | `tool_available` | Whether yt-dlp can be started |
 
 `dto.rs` converts the engine's types into what the window receives; the
@@ -64,6 +66,8 @@ The installers are not signed: macOS and Windows warn before opening them.
 
 - No installer for Intel Macs, although the tools for them are pinned.
 - yt-dlp inside an installed app does not update itself.
+- The stick is chosen as a folder: the app does not list removable drives and
+  does not eject them.
 
 - The window is tested through its pure parts and by hand in the preview;
   there is no automated test that drives the real window.

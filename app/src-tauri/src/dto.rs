@@ -1,6 +1,7 @@
 //! The shapes the window receives, and how the engine's types become them.
 
 use engine::playlist::{Checked, Event, Outcome};
+use engine::stick::Copy;
 use engine::tracklist::Entry;
 use serde::Serialize;
 
@@ -99,6 +100,43 @@ impl From<Event<'_>> for Progress {
     }
 }
 
+/// What happens while the music folder is copied to the stick.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum StickProgress {
+    /// How many tracks will be copied and how many are already up to date.
+    #[serde(rename_all = "camelCase")]
+    Planned {
+        to_copy: usize,
+        up_to_date: usize,
+    },
+    Copied {
+        path: String,
+    },
+    Failed {
+        path: String,
+        error: String,
+    },
+    /// The copy is over; `stopped` tracks were not reached.
+    Finished {
+        stopped: usize,
+    },
+}
+
+impl From<Copy<'_>> for StickProgress {
+    fn from(event: Copy<'_>) -> Self {
+        match event {
+            Copy::Copied { track } => Self::Copied {
+                path: track.path.clone(),
+            },
+            Copy::Failed { track, error } => Self::Failed {
+                path: track.path.clone(),
+                error,
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use engine::playlist::DownloadError;
@@ -160,6 +198,42 @@ mod tests {
             to_value(CheckResult::from(&checked)).unwrap(),
             json!({"kind": "unavailable", "position": 1, "error": "Video unavailable"})
         );
+    }
+
+    #[test]
+    fn stick_events_have_their_shapes() {
+        let track = engine::stick::Track {
+            path: "rock/01_A.mp3".into(),
+            size: 3,
+            modified: None,
+        };
+        let cases = [
+            (
+                StickProgress::Planned {
+                    to_copy: 2,
+                    up_to_date: 5,
+                },
+                json!({"kind": "planned", "toCopy": 2, "upToDate": 5}),
+            ),
+            (
+                StickProgress::from(Copy::Copied { track: &track }),
+                json!({"kind": "copied", "path": "rock/01_A.mp3"}),
+            ),
+            (
+                StickProgress::from(Copy::Failed {
+                    track: &track,
+                    error: "disk full".into(),
+                }),
+                json!({"kind": "failed", "path": "rock/01_A.mp3", "error": "disk full"}),
+            ),
+            (
+                StickProgress::Finished { stopped: 1 },
+                json!({"kind": "finished", "stopped": 1}),
+            ),
+        ];
+        for (event, expected) in cases {
+            assert_eq!(to_value(event).unwrap(), expected);
+        }
     }
 
     #[test]

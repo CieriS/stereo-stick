@@ -17,6 +17,15 @@ import {
   type TrackView,
   withTracks,
 } from "./state";
+import {
+  applyStick,
+  idleStick,
+  missingForCopy,
+  type StickState,
+  settleStick,
+  startCopying,
+  stickFraction,
+} from "./stick";
 
 const t = messagesFor(navigator.languages);
 document.documentElement.lang = t === messagesFor(["it"]) ? "it" : "en";
@@ -50,6 +59,16 @@ overall.setAttribute("aria-label", t.working);
 const summary = el("p", { class: "summary", hidden: true });
 summary.setAttribute("aria-live", "polite");
 const tracks = el("ol", { class: "tracks" });
+const stickPath = el("output", { id: "stick", class: "folder-path" }, t.stickEmpty);
+const chooseStick = el("button", { type: "button", class: "secondary" }, t.chooseFolder);
+const copyButton = el("button", { type: "button", class: "primary" }, t.copyToStick);
+const stopCopyButton = el("button", { type: "button", class: "secondary", hidden: true }, t.stop);
+const stickNotice = el("p", { class: "notice", role: "alert", hidden: true });
+const stickProgress = el("progress", { max: 1, value: 0, hidden: true });
+stickProgress.setAttribute("aria-label", t.working);
+const stickSummary = el("p", { class: "summary", hidden: true });
+stickSummary.setAttribute("aria-live", "polite");
+const stickFailures = el("ul", { class: "failures", hidden: true });
 
 function field(label: string, hint: string, control: HTMLElement, ...extra: Node[]) {
   const hintId = `${control.id}-hint`;
@@ -95,9 +114,22 @@ app.append(
     summary,
     tracks,
   ),
+  el(
+    "section",
+    { class: "card" },
+    el("h2", {}, t.stickTitle),
+    field(t.stickFolderLabel, t.stickHint, stickPath, chooseStick),
+    stickNotice,
+    stickProgress,
+    stickSummary,
+    stickFailures,
+    el("div", { class: "actions" }, stopCopyButton, copyButton),
+  ),
 );
 
 let state: State = initialState;
+let stick: StickState = idleStick;
+let stickFolder = "";
 let musicFolder = "";
 let toolAvailable = true;
 
@@ -134,13 +166,49 @@ function showNotice(text: string | undefined) {
   notice.textContent = text ?? "";
 }
 
+function renderStick(busy: boolean) {
+  const copying = stick.phase === "copying";
+  chooseStick.disabled = copying;
+  copyButton.disabled = copying || busy;
+  copyButton.textContent = copying ? t.working : t.copyToStick;
+  stopCopyButton.hidden = !copying;
+  if (!copying) {
+    stopCopyButton.disabled = false;
+    stopCopyButton.textContent = t.stop;
+  }
+  stickProgress.hidden = !copying;
+  stickProgress.value = stickFraction(stick);
+
+  const done = stick.phase === "done" && stick.error === undefined;
+  const nothingToDo = done && stick.toCopy === 0;
+  const outcome = t.stickSummary(stick.copied, stick.upToDate, stick.failed.length);
+  const lines = nothingToDo
+    ? [t.stickUpToDate]
+    : [stick.stopped > 0 ? `${outcome} · ${t.stoppedCount(stick.stopped)}` : outcome];
+  stickSummary.hidden = !done;
+  stickSummary.textContent = [...lines, t.stickEject].join(" ");
+  stickSummary.classList.toggle("has-failures", stick.failed.length > 0);
+  stickFailures.hidden = stick.failed.length === 0;
+  stickFailures.replaceChildren(
+    ...stick.failed.map(({ path, error }) =>
+      el("li", {}, el("strong", {}, path), " ", el("span", { class: "error" }, error)),
+    ),
+  );
+  if (stick.error !== undefined) {
+    stickNotice.hidden = false;
+    stickNotice.textContent = stick.error === "stick-overlap" ? t.stickOverlap : stick.error;
+  }
+}
+
 function render() {
-  const busy = state.phase === "checking" || state.phase === "downloading";
+  const copying = stick.phase === "copying";
+  const busy = state.phase === "checking" || state.phase === "downloading" || copying;
   const empty = state.tracks.length === 0;
   for (const control of [playlist, list, chooseFolder, removeNonMusic]) control.disabled = busy;
   checkButton.disabled = busy || empty || !toolAvailable;
   downloadButton.disabled = busy || empty || !toolAvailable;
   downloadButton.textContent = busy ? t.working : t.download;
+  renderStick(state.phase === "checking" || state.phase === "downloading");
   stopButton.hidden = state.phase !== "downloading";
   if (state.phase !== "downloading") {
     stopButton.disabled = false;
@@ -216,6 +284,44 @@ async function download() {
   }
 }
 
+async function copyToStick() {
+  const missing = missingForCopy(musicFolder, stickFolder);
+  stickNotice.hidden = missing === undefined;
+  stickNotice.textContent =
+    missing === "musicFolder" ? t.missingFolder : missing === "stickFolder" ? t.missingStick : "";
+  if (missing) return;
+
+  const setStick = (next: StickState) => {
+    stick = next;
+    render();
+  };
+  setStick(startCopying());
+  try {
+    await backend.copyToStick(musicFolder, stickFolder, (event) =>
+      setStick(applyStick(stick, event)),
+    );
+    setStick(settleStick(stick));
+  } catch (error) {
+    setStick(settleStick(stick, message(error)));
+  }
+}
+
+async function stopCopy() {
+  stopCopyButton.disabled = true;
+  stopCopyButton.textContent = t.stopping;
+  await backend.stopDownload();
+}
+
+copyButton.addEventListener("click", copyToStick);
+stopCopyButton.addEventListener("click", stopCopy);
+chooseStick.addEventListener("click", async () => {
+  const chosen = await backend.chooseFolder();
+  if (chosen) {
+    stickFolder = chosen;
+    stickPath.textContent = chosen;
+    stickPath.title = chosen;
+  }
+});
 list.addEventListener("input", listEdited);
 checkButton.addEventListener("click", check);
 downloadButton.addEventListener("click", download);

@@ -18,6 +18,7 @@ function parse(text: string): Track[] {
 const has = (track: Track, word: string) => track.name.toLowerCase().includes(word);
 
 let stopRequested = false;
+let folderRequests = 0;
 
 export const demoBackend: Backend = {
   demo: true,
@@ -60,8 +61,30 @@ export const demoBackend: Backend = {
       }
     }
   },
+  async copyToStick(_musicFolder, stickFolder, onProgress) {
+    stopRequested = false;
+    if (stickFolder.startsWith("/Music/Car")) throw "stick-overlap";
+    const songs = [
+      "Rock/01_First.mp3",
+      "Rock/02_Second.mp3",
+      "Pop/01_Third.mp3",
+      "Pop/02_Fourth.mp3",
+    ];
+    onProgress({ kind: "planned", toCopy: songs.length, upToDate: 6 });
+    let done = 0;
+    for (const path of songs) {
+      if (stopRequested) break;
+      await pause(400);
+      done += 1;
+      if (path.includes("Third"))
+        onProgress({ kind: "failed", path, error: "No space left on device" });
+      else onProgress({ kind: "copied", path });
+    }
+    onProgress({ kind: "finished", stopped: songs.length - done });
+  },
   stopDownload: async () => {
     stopRequested = true;
   },
-  chooseFolder: async () => "/Music/Car",
+  // The first folder asked for is the music folder, the next ones the stick.
+  chooseFolder: async () => (folderRequests++ === 0 ? "/Music/Car" : "/Volumes/STICK"),
 };

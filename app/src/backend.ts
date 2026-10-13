@@ -5,6 +5,7 @@ import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { demoBackend } from "./demo";
 import type { CheckResult, Progress, Track } from "./state";
+import type { StickEvent } from "./stick";
 
 export interface DownloadRequest {
   playlist: string;
@@ -20,7 +21,13 @@ export interface Backend {
   parseList(text: string): Promise<Track[]>;
   checkList(text: string, onResult: (result: CheckResult) => void): Promise<void>;
   downloadList(request: DownloadRequest, onProgress: (event: Progress) => void): Promise<void>;
-  /** Asks the download in progress to stop; `downloadList` then ends early. */
+  /** Copies what is new or changed from the music folder to the stick. */
+  copyToStick(
+    musicFolder: string,
+    stickFolder: string,
+    onProgress: (event: StickEvent) => void,
+  ): Promise<void>;
+  /** Asks the download or the copy in progress to stop; it then ends early. */
   stopDownload(): Promise<void>;
   /** Asks the user for a folder; `null` when they change their mind. */
   chooseFolder(): Promise<string | null>;
@@ -39,6 +46,11 @@ const desktopBackend: Backend = {
     const channel = new Channel<Progress>();
     channel.onmessage = onProgress;
     return invoke("download_list", { request, onProgress: channel });
+  },
+  copyToStick(musicFolder, stickFolder, onProgress) {
+    const channel = new Channel<StickEvent>();
+    channel.onmessage = onProgress;
+    return invoke("copy_to_stick", { musicFolder, stickFolder, onProgress: channel });
   },
   stopDownload: () => invoke("stop_download"),
   chooseFolder: () => open({ directory: true, multiple: false }),

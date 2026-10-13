@@ -10,12 +10,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use engine::playlist::{self, NonMusic, Request};
 use engine::process::YtDlp;
-use engine::{files, tracklist};
+use engine::{files, stick, tracklist};
 use serde::Deserialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
-use dto::{CheckResult, Progress, Track};
+use dto::{CheckResult, Progress, StickProgress, Track};
 
 /// Raised by the window to stop the download in progress.
 #[derive(Default)]
@@ -117,7 +117,46 @@ async fn download_list(
     .await
 }
 
-/// Stops the download in progress: the track in flight is abandoned and the
+/// Copies to the stick the tracks of the music folder that are missing or
+/// changed there. Nothing on the stick is deleted.
+#[tauri::command]
+async fn copy_to_stick(
+    stop: State<'_, Stop>,
+    music_folder: PathBuf,
+    stick_folder: PathBuf,
+    on_progress: Channel<StickProgress>,
+) -> Result<(), String> {
+    let stop = Arc::clone(&stop.0);
+    stop.store(false, Ordering::Relaxed);
+    off_the_window_thread(move || {
+        if stick::overlap(&music_folder, &stick_folder) {
+            return Err("stick-overlap".to_owned());
+        }
+        let source = stick::scan(&music_folder).map_err(|error| error.to_string())?;
+        let on_stick = stick::scan(&stick_folder).map_err(|error| error.to_string())?;
+        let to_copy = stick::plan(&source, &on_stick);
+        // A window that stopped listening is no reason to stop copying.
+        let send = |event| drop(on_progress.send(event));
+        send(StickProgress::Planned {
+            to_copy: to_copy.len(),
+            up_to_date: source.len() - to_copy.len(),
+        });
+        let outcome = stick::copy(
+            &music_folder,
+            &stick_folder,
+            &to_copy,
+            &mut |event| send(StickProgress::from(event)),
+            &stop,
+        );
+        send(StickProgress::Finished {
+            stopped: outcome.stopped,
+        });
+        Ok(())
+    })
+    .await
+}
+
+/// Stops the download or the copy in progress: the track in flight is abandoned and the
 /// ones after it are not started.
 #[tauri::command]
 fn stop_download(stop: State<'_, Stop>) {
@@ -141,6 +180,7 @@ pub fn run() {
             check_list,
             download_list,
             stop_download,
+            copy_to_stick,
             tool_available
         ])
         .run(tauri::generate_context!())
