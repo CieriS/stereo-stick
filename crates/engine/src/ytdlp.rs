@@ -76,6 +76,9 @@ pub fn download_args(job: &Job<'_>) -> Vec<OsString> {
         "320K",
         "--no-playlist",
         "--no-warnings",
+        // File names every system accepts: a USB stick is usually FAT, which
+        // refuses characters such as ? : " that titles often contain.
+        "--windows-filenames",
         "--add-metadata",
         // Car stereos show "NA" for a missing artist: fall back to the channel.
         "--parse-metadata",
@@ -211,6 +214,7 @@ mod tests {
         let args = strings(&download_args(&job(&entry, "My Mix", NonMusic::Keep)));
         assert_eq!(value_after(&args, "--audio-format"), "mp3");
         assert_eq!(value_after(&args, "--convert-thumbnails"), "jpg");
+        assert!(args.contains(&"--windows-filenames".to_owned()));
         assert_eq!(value_after(&args, "--paths"), "music/mix");
         assert_eq!(value_after(&args, "--output"), "07_%(title)s.%(ext)s");
         assert_eq!(&args[args.len() - 2..], ["--", "https://example.com/v"]);
