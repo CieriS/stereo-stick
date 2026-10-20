@@ -70,6 +70,10 @@ right to download: your own content, content under a free licence, or content
 whose owner allows it. You are responsible for respecting the terms of the
 sites you use and the copyright law of your country.
 
+## Git hooks
+
+`.githooks/pre-push` runs before every push: a secret scan of the outgoing commits (gitleaks, or its Docker image when the binary is missing) and then the fast checks (`just check`). Enable it once per clone with `git config core.hooksPath .githooks`. Skip it once with `git push --no-verify`. On CI, `.github/workflows/secret-scan.yml` scans the whole history of every branch and tag.
+
 ## Licence
 
 [MIT](LICENSE). The installers also contain yt-dlp, FFmpeg and Deno, each
