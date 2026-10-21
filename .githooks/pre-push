@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Pre-push gate, installed by _infra/scripts/install-repo-guards.sh (template: _infra/templates/pre-push).
+# Stops a push locally when the CI would reject it:
+#   1. secrets in the commits being pushed (gitleaks: local binary, else its Docker image);
+#   2. the repo's fast checks (format, lint, types, unit tests), CHECKS below.
+# Fake values in tests are declared in .gitleaksignore. Skip once with `git push --no-verify`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+CHECKS='just check'
+GITLEAKS_IMAGE='ghcr.io/gitleaks/gitleaks:v8.30.1'
+zero=0000000000000000000000000000000000000000
+
+scan() { # log range, e.g. "a..b" or "sha --not --remotes"
+  if command -v gitleaks >/dev/null; then
+    gitleaks git . --redact --no-banner --log-opts="$1"
+  elif command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+    docker run --rm -e GIT_CONFIG_PARAMETERS="'safe.directory=*'" -v "$PWD:/repo" "$GITLEAKS_IMAGE" git /repo --redact --no-banner --log-opts="$1"
+  else
+    echo "pre-push: gitleaks not available (brew install gitleaks, or start Docker): secret scan skipped" >&2
+  fi
+}
+
+# stdin: <local ref> <local sha> <remote ref> <remote sha>, one line per pushed ref.
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # a deleted branch has nothing to scan
+  if [ "$remote_sha" = "$zero" ]; then range="$local_sha --not --remotes"; else range="$remote_sha..$local_sha"; fi
+  echo "pre-push: secret scan ($range)"
+  scan "$range" || { echo "pre-push: possible secret in the pushed commits (see above). Push stopped." >&2; exit 1; }
+done
+
+echo "pre-push: $CHECKS"
+bash -c "$CHECKS"
